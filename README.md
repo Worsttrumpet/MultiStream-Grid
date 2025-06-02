@@ -1,4 +1,4 @@
-# MultiStream Hub
+# MultiStream Grid
 
 A modern, customizable multistream viewer for Twitch, Kick, and YouTube.  
 Easily watch, organize, and manage multiple live streams in a single browser window.
