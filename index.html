@@ -134,6 +134,9 @@
     background: transparent;
     min-height: 36px;
     position: relative;
+    width: 100%;
+    min-width: 0;
+    cursor: pointer;
   }
   .stream-item:last-child {
     border-bottom: none;
@@ -153,6 +156,7 @@
   padding: 2px 5px;
   border-radius: 4px;
   transition: background 0.15s, border 0.15s;
+  pointer-events: auto;
 }
 
 .stream-item button:hover {
@@ -562,6 +566,37 @@
   pointer-events: none;
   transition: opacity 0.2s;
   opacity: 0.98;
+  display:none;
+  position:fixed;
+  z-index:1000;
+  box-shadow:0 4px 24px #000a;
+  border-radius:10px;
+  overflow:hidden;
+  background:#000;
+}
+
+/* Subfolder styling */
+.subfolder {
+  margin: 6px 0 0 0;
+  background: #222;
+  border-radius: 5px;
+  overflow: hidden;
+}
+.subfolder-header {
+  font-weight: bold;
+  padding: 7px 16px;
+  background: #292929;
+  cursor: pointer;
+  user-select: none;
+  color: #ffb300;
+  border-bottom: 1px solid #232323;
+  font-size: 1em;
+}
+.subfolder-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding-left: 10px;
 }
 </style>
 </head>
@@ -623,6 +658,35 @@
         <div class="folder-header" onclick="toggleFolder('twitch')">Twitch (0 streams) ▼</div>
         <div class="folder-content" id="folder-content-twitch"></div>
       </div>
+      <div class="folder" id="folder-dmm">
+        <div class="folder-header" onclick="toggleFolder('dmm')">DMM Allstars Season 2 (0 streams) ▼</div>
+        <div class="folder-content" id="folder-content-dmm">
+          <div class="subfolder" id="subfolder-dino">
+            <div class="subfolder-header" data-label="Dino Nuggets" onclick="toggleSubfolder('dino')">Dino Nuggets ▼</div>
+            <div class="subfolder-content" id="subfolder-content-dino"></div>
+          </div>
+          <div class="subfolder" id="subfolder-oda">
+            <div class="subfolder-header" data-label="Odablock Warriors" onclick="toggleSubfolder('oda')">Odablock Warriors ▼</div>
+            <div class="subfolder-content" id="subfolder-content-oda"></div>
+          </div>
+          <div class="subfolder" id="subfolder-solo">
+            <div class="subfolder-header" data-label="Solo Mission Snakes" onclick="toggleSubfolder('solo')">Solo Mission Snakes ▼</div>
+            <div class="subfolder-content" id="subfolder-content-solo"></div>
+          </div>
+          <div class="subfolder" id="subfolder-torv">
+            <div class="subfolder-header" data-label="Torvesta Titans" onclick="toggleSubfolder('torv')">Torvesta Titans ▼</div>
+            <div class="subfolder-content" id="subfolder-content-torv"></div>
+          </div>
+          <div class="subfolder" id="subfolder-boaty">
+            <div class="subfolder-header" data-label="B0aty Brawlers" onclick="toggleSubfolder('boaty')">B0aty Brawlers ▼</div>
+            <div class="subfolder-content" id="subfolder-content-boaty"></div>
+          </div>
+          <div class="subfolder" id="subfolder-skillspecs">
+            <div class="subfolder-header" data-label="Skill Spec Smorcs" onclick="toggleSubfolder('skillspecs')">Skill Spec Smorcs ▼</div>
+            <div class="subfolder-content" id="subfolder-content-skillspecs"></div>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="settings-footer">
       <div id="settings-btn" title="Settings">
@@ -645,7 +709,7 @@
 </div>
     <div id="container"></div>
     <div id="empty-placeholder"></div>
-    <div id="chat">
+    <div id="chat" style="display:none;">
       <div id="chat-header">Chat</div>
       <div id="chat-content"></div>
     </div>
@@ -674,7 +738,7 @@
   <label for="maxStreamsInput"><strong>Max Active Streams:</strong></label>
   <input type="number" id="maxStreamsInput" min="1" max="20" value="6" style="width:60px; margin-left:8px;">
 </div>
-      <button id="resetBtn" onclick="resetAll()" style="
+      <button id="resetBtn" onclick="confirmDeleteAllStreams()" style="
         background: #ff4c4c;
         color: #fff;
         border: none;
@@ -684,7 +748,7 @@
         font-size: 1em;
         margin-top: 10px;
         width: 100%;
-      ">Reset All Streams</button>
+      ">Delete All Streams</button>
       <div style="color:#888; font-size:0.95em; margin-top:16px;">More settings coming soon!</div>
     </div>
   </div>
@@ -696,730 +760,675 @@
 </div>
   <script src="https://player.twitch.tv/js/embed/v1.js"></script>
   <script>
-    const container = document.getElementById('container');
-    const streamList = document.getElementById('streamList');
-    const chat = document.getElementById('chat');
-    const platformSelect = document.getElementById('platformSelect');
-    const channelInput = document.getElementById('channelInput');
-    const streams = {};
-    let activeChatChannel = null;
-    const btnStates = {};
-    let focusedStreamKey = null;
-    let nonFocusRotationInterval = null;
-    let rotationCount = 0;
-    let rotationWarningTimeout = null;
+const container = document.getElementById('container');
+const streamList = document.getElementById('streamList');
+const chat = document.getElementById('chat');
+const platformSelect = document.getElementById('platformSelect');
+const channelInput = document.getElementById('channelInput');
+const streams = {};
+let activeChatChannel = null;
+const btnStates = {};
+let focusedStreamKey = null;
+let nonFocusRotationInterval = null;
+let rotationCount = 0;
+let rotationWarningTimeout = null;
+let previewTimeout = null;
+let currentPreviewKey = null;
 
-    // Default streamers are all Twitch
-    const defaultStreamers = [
-      { channel: "b0aty", platform: "twitch" },
-      { channel: "westham", platform: "twitch" },
-      { channel: "lake", platform: "twitch" },
-      { channel: "sick_nerd", platform: "twitch" },
-      { channel: "coxie", platform: "twitch" },
-      { channel: "eliop14", platform: "twitch" },
-      { channel: "purespam", platform: "twitch" },
-      { channel: "skillspecs", platform: "twitch" },
-      { channel: "muts", platform: "twitch" },
-      { channel: "ditterbitter", platform: "twitch" },
-      { channel: "sparcmac", platform: "twitch" },
-      { channel: "dino_xx", platform: "twitch" },
-      { channel: "mmorpg", platform: "twitch" },
-      { channel: "purpp", platform: "twitch" },
-      { channel: "verf", platform: "twitch" },
-      { channel: "rhys", platform: "twitch" },
-      { channel: "vthevictim", platform: "twitch" },
-      { channel: "skiddler", platform: "twitch" },
-      { channel: "evscape", platform: "twitch" },
-      { channel: "dubiedobies", platform: "twitch" },
-      { channel: "mikars", platform: "twitch" },
-      { channel: "raikesy", platform: "twitch" },
-      { channel: "pip_osrs", platform: "twitch" },
-      { channel: "torvesta", platform: "twitch" },
-      { channel: "odablock", platform: "twitch" },
-      { channel: "solomission", platform: "twitch" },
-      { channel: "mr_mammal", platform: "twitch" },
-      { channel: "alfie", platform: "twitch" },
-      { channel: "c_engineer", platform: "twitch" },
-      // Add pip (YouTube)
-      { channel: "8GfWQ18tgCw", platform: "youtube", label: "pip" },
-      // Add westham (YouTube)
-      { channel: "IQhHl1l_7QY", platform: "youtube", label: "westham" },
-      // Add verf (YouTube)
-      { channel: "C-sEPfnYnJI", platform: "youtube", label: "verf" },
-      // Add MikaRS (YouTube)
-      { channel: "_K-emzxOtI4", platform: "youtube", label: "MikaRS" },
-      // Add PureSpam (YouTube)
-      { channel: "88SQ_wWUM9c", platform: "youtube", label: "PureSpam" },
-      // Add odablock and b0aty for Kick
-      { channel: "odablock", platform: "kick" },
-      { channel: "b0aty", platform: "kick" }
-    ];
-
-    // Add default streamers
-    defaultStreamers.forEach(obj => {
-      addToSidebar(obj.channel, obj.platform, obj.label);
-    });
-    updateFolderCounts(); // <-- Add this line
-
-    // Use form submit instead of keypress
-    document.getElementById('addForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      const channel = channelInput.value.trim();
-      const platform = platformSelect.value;
-      const key = `${platform}:${channel.toLowerCase()}`;
-      if (channel && !btnStates[key]) {
-        addToSidebar(channel, platform);
-        addStream(channel, platform); // Auto-add the stream!
-        channelInput.value = '';
-        updateEmptyPlaceholder();
-        saveUserStreams(); // <-- Add this line
-      }
-    });
-
-    platformSelect.addEventListener('change', function() {
-      if (this.value === 'twitch' || this.value === 'kick') {
-        channelInput.placeholder = 'Channel Name';
-      } else if (this.value === 'youtube') {
-        channelInput.placeholder = 'YouTube Video ID';
-      }
-    });
-
-    // Set initial placeholder on page load
-    if (platformSelect.value === 'twitch' || platformSelect.value === 'kick') {
-      channelInput.placeholder = 'Channel Name';
-    } else if (platformSelect.value === 'youtube') {
-      channelInput.placeholder = 'YouTube Video ID';
-    }
-
-    function addToSidebar(channel, platform = 'twitch', label = null) {
-      const key = `${platform}:${channel.toLowerCase()}`;
-      // Prevent duplicate sidebar items
-      let div = document.getElementById(`item-${key}`);
-      if (!div) {
-        div = document.createElement('div');
-        div.className = 'stream-item';
-        div.id = `item-${key}`;
-
-        // Platform logo SVGs
-        let logo = '';
-        if (platform === 'twitch') {
-          logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#9147ff"/><path d="M12 10h16l2 4v12l-4 4h-6l-4 4v-4h-4z" fill="#fff"/><rect x="17" y="16" width="2" height="7" fill="#9147ff"/><rect x="21" y="16" width="2" height="7" fill="#9147ff"/></svg>`;
-        } else if (platform === 'kick') {
-          logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#53fc18"/><path d="M12 12h5v16h-5zm6.5 0h5v7h4v2h-4v7h-5z" fill="#181818"/></svg>`;
-        } else if (platform === 'youtube') {
-          logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#ff0000"/><polygon points="17,15 27,20 17,25" fill="#fff"/></svg>`;
-        }
-
-        div.innerHTML = `
-          <span>${logo}<span>${label || channel}</span></span>
-          <button id="add-${key}">✔️</button>
-          <button id="remove-${key}">❌</button>
-          <button id="chat-${key}">💬</button>
-        `;
-
-        // Always add to the platform folder first
-        const platformFolder = document.getElementById(`folder-content-${platform}`) || streamList;
-        platformFolder.appendChild(div);
-
-        btnStates[key] = { add: false, remove: false, chat: false, platform, channel };
-
-        document.getElementById(`add-${key}`).onclick = () => {
-          addStream(channel, platform);
-          updateEmptyPlaceholder();
-        };
-        document.getElementById(`remove-${key}`).onclick = () => {
-          removeStream(channel, platform);
-          updateEmptyPlaceholder();
-        };
-        document.getElementById(`chat-${key}`).onclick = () => setActiveChat(channel, platform);
-
-        // --- Attach preview events here ---
-        div.addEventListener('mouseenter', function(e) {
-          showSidebarPreview(channel, platform, label || channel, e);
-        });
-        div.addEventListener('mousemove', moveSidebarPreview);
-        div.addEventListener('mouseleave', hideSidebarPreview);
-      }
-      updateFolderCounts();
-    }
-
-    function addStream(channel, platform = 'twitch') {
-      const key = `${platform}:${channel.toLowerCase()}`;
-      if (btnStates[key].add || streams[key]) return;
-
-      const wrapper = document.createElement('div');
-      wrapper.className = 'stream-wrapper';
-      wrapper.id = `wrapper-${key}`;
-
-      if (platform === 'kick') {
-        wrapper.classList.add('kick-stream');
-        wrapper.innerHTML = `
-          <iframe src="https://player.kick.com/${channel}" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>
-        `;
-        container.appendChild(wrapper);
-      } else if (platform === 'youtube') {
-        wrapper.classList.add('youtube-stream');
-        let videoId = channel;
-        const ytMatch = channel.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
-        if (ytMatch) videoId = ytMatch[1];
-        if (/^[\w-]{11}$/.test(videoId)) {
-          wrapper.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1" width="100%" height="100%" frameborder="0" allowfullscreen></iframe>`;
-        } else {
-          wrapper.innerHTML = `<div style="color:#fff;padding:10px;">Enter YouTube Video ID or URL</div>`;
-        }
-        setTimeout(() => {
-          const iframe = wrapper.querySelector('iframe');
-          if (iframe) iframe.muted = true;
-        }, 500);
-        container.appendChild(wrapper);
-      } else if (platform === 'twitch') {
-        wrapper.classList.add('twitch-stream');
-        container.appendChild(wrapper);
-        const embed = new Twitch.Embed(wrapper.id, {
-          width: '100%',
-          height: '100%',
-          channel: channel,
-          parent: [location.hostname],
-          layout: "video"
-        });
-        wrapper.embed = embed;
-        embed.addEventListener(Twitch.Embed.VIDEO_READY, () => {
-          embed.setMuted(true);
-        });
-      }
-
-      // Add a small focus button in the top-right corner
-      const focusBtn = document.createElement('button');
-      focusBtn.className = 'focus-btn';
-      focusBtn.title = 'Focus this stream';
-      focusBtn.innerHTML = '🔍';
-      focusBtn.onclick = (e) => {
-        setStreamFocus(key);
-        e.stopPropagation();
-      };
-      wrapper.appendChild(focusBtn);
-
-      streams[key] = { embed: wrapper.embed, wrapper };
-      btnStates[key].add = true;
-      btnStates[key].remove = false;
-      updateButtonStates(channel, platform);
-
-      // Move sidebar item to "Currently Watching"
-      const itemDiv = document.getElementById(`item-${key}`);
-      const currentFolder = document.getElementById('folder-content-current');
-      if (itemDiv && currentFolder && !currentFolder.contains(itemDiv)) {
-        currentFolder.appendChild(itemDiv);
-      }
-      updateFolderCounts();
-      // ...rest of your code...
-    }
-
-    function removeStream(channel, platform = 'twitch') {
-      const key = `${platform}:${channel.toLowerCase()}`;
-      const stream = streams[key];
-      if (stream) {
-        stream.wrapper.remove();
-        delete streams[key];
-        btnStates[key].add = false;
-        btnStates[key].remove = true;
-        updateButtonStates(channel, platform);
-      }
-
-      // Move sidebar item back to platform folder
-      const itemDiv = document.getElementById(`item-${key}`);
-      const platformFolder = document.getElementById(`folder-content-${platform}`);
-      if (itemDiv && platformFolder && !platformFolder.contains(itemDiv)) {
-        platformFolder.appendChild(itemDiv);
-      }
-      updateFolderCounts();
-      // ...rest of your code...
-    }
-
-    function setActiveChat(channel, platform = 'twitch') {
-      const key = `${platform}:${channel.toLowerCase()}`;
-      const chatContent = document.getElementById('chat-content');
-      const chatPanel = document.getElementById('chat');
-      const chatHeader = document.getElementById('chat-header');
-      const chatToggle = document.getElementById('toggle-chat');
-      if (activeChatChannel === key) {
-        activeChatChannel = null;
-        chatContent.innerHTML = '';
-        chatHeader.textContent = 'Chat';
-        chatHeader.style.color = '#bbb';
-        chatPanel.style.display = 'none';
-      } else {
-        activeChatChannel = key;
-        // Format the display name for the header
-        let displayName = channel;
-        if (btnStates[key] && btnStates[key].label) {
-          displayName = btnStates[key].label;
-        }
-        chatHeader.textContent = `${displayName}'s Chat`;
-        chatHeader.style.color = '#ffb300'; // Gold color
-
-        if (platform === 'twitch') {
-          // Get the current hostname for the parent parameter
-          const parent = location.hostname;
-          chatContent.innerHTML = `<iframe src="https://www.twitch.tv/embed/${channel}/chat?darkpopout&parent=${parent}" width="100%" height="100%" frameborder="0"></iframe>`;
-        } else if (platform === 'kick') {
-          chatContent.innerHTML = `<iframe src="https://kick.com/${channel}/chatroom" width="100%" height="100%" frameborder="0"></iframe>`;
-        } else if (platform === 'youtube') {
-          let videoId = channel;
-          const ytMatch = channel.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
-          if (ytMatch) videoId = ytMatch[1];
-          if (/^[\w-]{11}$/.test(videoId)) {
-            chatContent.innerHTML = `
-              <div style="color:#fff;padding:16px 10px;">
-                YouTube chat embedding is not supported directly.<br>
-                <button onclick="openYouTubeChatPopout('${videoId}')" style="margin-top:10px;padding:6px 16px;background:#ff0000;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:bold;">
-                  Open YouTube Chat in Popout
-                </button>
-              </div>
-            `;
-          } else {
-            chatContent.innerHTML = `<div style="color:#fff;padding:10px;">YouTube chat embedding is not supported directly.</div>`;
-          }
-        }
-        // Only show chat if toggle is enabled
-        if (chatToggle && chatToggle.checked) {
-          chatPanel.style.display = 'block';
-        } else {
-          chatPanel.style.display = 'none';
-        }
-      }
-
-      Object.keys(btnStates).forEach(chKey => {
-        btnStates[chKey].chat = (chKey === activeChatChannel);
-        const [chPlatform, chName] = chKey.split(':');
-        updateButtonStates(chName, chPlatform);
-      });
-    }
-
-    function updateButtonStates(channel, platform = 'twitch') {
-      const key = `${platform}:${channel.toLowerCase()}`;
-      const addBtn = document.getElementById(`add-${key}`);
-      const removeBtn = document.getElementById(`remove-${key}`);
-      const chatBtn = document.getElementById(`chat-${key}`);
-
-      if (!addBtn || !removeBtn || !chatBtn) return;
-
-      addBtn.classList.toggle('active', btnStates[key].add);
-      removeBtn.classList.toggle('active', btnStates[key].remove);
-      chatBtn.classList.toggle('active', btnStates[key].chat);
-
-      addBtn.disabled = btnStates[key].add;
-      removeBtn.disabled = btnStates[key].remove;
-    }
-
-    document.getElementById('removeSelectedBtn').onclick = function() {
-      const checked = document.querySelectorAll('#removeStreamsForm input[name="removeStream"]:checked');
-      checked.forEach(box => {
-        const [platform, channel] = box.value.split(':');
-        removeStream(channel, platform);
-      });
-      populateRemoveStreamsChecklist(); // Refresh the list
-      updateEmptyPlaceholder();
-      updateFolderCounts();
-      saveUserStreams();
-    };
-
-    function resetAll() {
-      Object.keys(streams).forEach(key => {
-        const [platform, channel] = key.split(':');
-        removeStream(channel, platform);
-      });
-      activeChatChannel = null;
-      document.getElementById('chat-content').innerHTML = '';
-
-      Object.keys(btnStates).forEach(key => {
-        btnStates[key] = { add: false, remove: false, chat: false, platform: btnStates[key].platform, channel: btnStates[key].channel };
-        const [platform, channel] = key.split(':');
-        updateButtonStates(channel, platform);
-      });
-      updateEmptyPlaceholder();
-      updateFolderCounts();
-      saveUserStreams(); // <-- Add this line
-    }
-
-    function setStreamFocus(key) {
-      // Remove focus from all streams first
-      Object.values(streams).forEach(obj => {
-        obj.wrapper.classList.remove('focused');
-        // Remove any existing resize handle
-        const oldHandle = obj.wrapper.querySelector('.resize-handle');
-        if (oldHandle) oldHandle.remove();
-      });
-
-      // Toggle focus: if already focused, unfocus; otherwise, focus only this one
-      if (focusedStreamKey === key) {
-        focusedStreamKey = null;
-      } else {
-        focusedStreamKey = key;
-        const focusedWrapper = streams[key].wrapper;
-        focusedWrapper.classList.add('focused');
-
-        // Move focused stream to the top of the container
-        if (container.firstChild !== focusedWrapper) {
-          container.insertBefore(focusedWrapper, container.firstChild);
-        }
-        // (No resize handle or logic)
-      }
-      updateStreamFocus();
-    }
-     function updateStreamFocus() {
-      if (focusedStreamKey) {
-        const focused = streams[focusedStreamKey];
-      }
-    }
-    // Focused stream size controls
-const focusSizeControls = document.getElementById('focus-size-controls');
-const focusSizeSlider = document.getElementById('focus-size-slider');
-const focusSizeValue = document.getElementById('focus-size-value');
-
-function updateFocusSize(val) {
-  document.documentElement.style.setProperty('--focus-width', val + 'vw');
-  focusSizeValue.textContent = val + '%';
+// --- Helper: Safe key for IDs (no colons) ---
+function makeKey(platform, channel) {
+  return `${platform}__${channel.toLowerCase()}`;
 }
 
-// Show controls only when a stream is focused
-function showFocusSizeControls(show) {
-  focusSizeControls.style.display = show ? 'flex' : 'none';
-}
+// --- DMM Subfolder Memberships ---
+const dmmSubfolders = {
+  boaty:      ["b0aty","port_khazard", "dubiedobies", "pip_osrs", "pip", "evscape"],
+  torv:       ["torvesta", "eliop14", "lake", "alfie", "mr_mammal"],
+  solo:       ["solomission", "ditterbitter", "purespam", "vthevictim", "raikesy"],
+  oda:        ["odablock", "rhys", "mikars", "muts", "mmorpg"],
+  dino:       ["dino_xx", "westham", "skiddler", "coxie", "verf"],
+  skillspecs: ["skillspecs", "purpp", "c_engineer", "sick_nerd", "sparcmac"]
+};
 
-// Listen for slider changes
-focusSizeSlider.addEventListener('input', function() {
-  updateFocusSize(this.value);
+// --- Default Streamers (Twitch & Kick) ---
+const defaultStreamers = [
+  // B0aty Brawlers
+  { channel: "b0aty", platform: "twitch" },
+  { channel: "b0aty", platform: "kick" },
+  { channel: "port_khazard", platform: "twitch" },
+  { channel: "dubiedobies", platform: "twitch" },
+  { channel: "pip_osrs", platform: "twitch" }, { channel: "pip", platform: "kick" },
+  { channel: "evscape", platform: "twitch" }, { channel: "evscape", platform: "kick" },
+
+  // Torvesta Titans
+  { channel: "torvesta", platform: "twitch" },
+  { channel: "eliop14", platform: "twitch" },
+  { channel: "lake", platform: "twitch" },
+  { channel: "alfie", platform: "twitch" }, { channel: "alfie", platform: "kick" },
+  { channel: "mr_mammal", platform: "twitch" },
+
+  // Solo Mission Snakes
+  { channel: "solomission", platform: "twitch" },
+  { channel: "ditterbitter", platform: "twitch" }, { channel: "ditterbitter", platform: "kick" },
+  { channel: "purespam", platform: "twitch" },
+  { channel: "vthevictim", platform: "twitch" },
+  { channel: "raikesy", platform: "twitch" }, { channel: "raikesy", platform: "kick" },
+
+  // Odablock Warriors
+  { channel: "odablock", platform: "twitch" }, { channel: "odablock", platform: "kick" },
+  { channel: "rhys", platform: "twitch" }, { channel: "rhys", platform: "kick" },
+  { channel: "mikars", platform: "twitch" },
+  { channel: "muts", platform: "twitch" },
+  { channel: "mmorpg", platform: "twitch" },
+
+  // Dino Nuggets
+  { channel: "dino_xx", platform: "twitch" },
+  { channel: "westham", platform: "twitch" },
+  { channel: "skiddler", platform: "twitch" }, { channel: "skiddler", platform: "kick" },
+  { channel: "coxie", platform: "twitch" }, { channel: "coxie", platform: "kick" },
+  { channel: "verf", platform: "twitch" },
+
+  // Skill Spec Smorcs
+  { channel: "skillspecs", platform: "twitch" }, { channel: "skillspecs", platform: "kick" },
+  { channel: "purpp", platform: "twitch" },
+  { channel: "c_engineer", platform: "twitch" },
+  { channel: "sick_nerd", platform: "twitch" }, { channel: "sick_nerd", platform: "kick" },
+  { channel: "sparcmac", platform: "twitch" }
+];
+
+// --- Add default streamers to sidebar in correct subfolders ---
+defaultStreamers.forEach(obj => {
+  addToSidebar(obj.channel, obj.platform, obj.label, 'dmm');
+  addStream(obj.channel, obj.platform);
+  const key = makeKey(obj.platform, obj.channel);
+  if (btnStates[key]) btnStates[key].dmmOriginal = true;
+});
+sortAllDmmSubfolders();
+updateFolderCounts();
+
+// Restore user-added streams on page load
+const savedUserStreams = JSON.parse(localStorage.getItem('userStreams') || '[]');
+savedUserStreams.forEach(obj => {
+  addToSidebar(obj.channel, obj.platform, obj.label);
+  addStream(obj.channel, obj.platform);
 });
 
-
-
-    // Hide controls on load
-    showFocusSizeControls(false);
-
-    function updateSingleStreamClass() {
-      const wrappers = container.querySelectorAll
-      wrappers.forEach(w => w.classList.remove('single'));
-      if (wrappers.length === 1) {
-        wrappers[0].classList.add('single');
-      }
-    }
-
-    document.getElementById('settings-btn').onclick = () => {
-      document.getElementById('settings-modal').style.display = 'flex';
-      populateRemoveStreamsChecklist(); // <-- Add this line
-    };
-
-    document.getElementById('close-settings').onclick = () => {
-      document.getElementById('settings-modal').style.display = 'none';
-    };
-
-    document.getElementById('toggle-chat').onchange = function() {
-      const isChecked = this.checked;
-      const chatPanel = document.getElementById('chat');
-      if (!isChecked) {
-        chatPanel.style.display = 'none';
-      } else if (activeChatChannel) {
-        chatPanel.style.display = 'block';
-      }
-    };
-
-    function updateEmptyPlaceholder() {
-      const placeholder = document.getElementById('empty-placeholder');
-      const hasStreams = Object.keys(streams).length > 0;
-      placeholder.style.display = hasStreams ? 'none' : 'flex';
-    }
-
-    // Initial call to show placeholder if no streams
-    updateEmptyPlaceholder();
-
-    function toggleFolder(platform) {
-      const content = document.getElementById(`folder-content-${platform}`);
-      const header = document.querySelector(`#folder-${platform} .folder-header`);
-      if (content.style.display === 'none') {
-        content.style.display = 'block';
-        header.textContent = header.textContent.replace('►', '▼');
-      } else {
-        content.style.display = 'none';
-        header.textContent = header.textContent.replace('▼', '►');
-      }
-    }
-
-    function updateFolderCounts() {
-      const platforms = ['current', 'youtube', 'kick', 'twitch'];
-      platforms.forEach(platform => {
-        const content = document.getElementById(`folder-content-${platform}`);
-        const header = document.querySelector(`#folder-${platform} .folder-header`);
-        const count = content ? content.children.length : 0;
-        // Keep arrow direction
-        const arrow = header.textContent.includes('►') ? '►' : '▼';
-        header.textContent = `${capitalize(platform)} (${count} stream${count === 1 ? '' : 's'}) ${arrow}`;
-      });
-    }
-
-    function capitalize(str) {
-      return str.charAt(0).toUpperCase() + str.slice(1);
-    }
-
-    function saveUserStreams() {
-      // Only save user-added streams (not default ones)
-      const userStreams = [];
-      Object.keys(btnStates).forEach(key => {
-        // Only save if the stream was added by the user (add is true)
-        if (btnStates[key].add) {
-          const { platform, channel } = btnStates[key];
-          // Optionally save label if you use it
-          userStreams.push({ platform, channel });
-        }
-      });
-      localStorage.setItem('userStreams', JSON.stringify(userStreams));
-    }
-
-    // --- Drag-and-drop reordering for streams ---
-let dragSrcEl = null;
-
-function handleDragStart(e) {
-  dragSrcEl = this;
-  this.style.opacity = '0.4';
-  e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/html', this.id);
-}
-
-function handleDragOver(e) {
-  if (e.preventDefault) e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  return false;
-}
-
-function handleDragEnter() {
-  this.classList.add('over');
-}
-
-function handleDragLeave() {
-  this.classList.remove('over');
-}
-
-function handleDrop(e) {
-  if (e.stopPropagation) e.stopPropagation();
-  if (dragSrcEl !== this) {
-    container.insertBefore(dragSrcEl, this);
-    saveUserStreamsOrder();
+// Use form submit instead of keypress
+document.getElementById('addForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const channel = channelInput.value.trim();
+  const platform = platformSelect.value;
+  const key = makeKey(platform, channel);
+  if (channel && !btnStates[key]) {
+    addToSidebar(channel, platform);
+    addStream(channel, platform);
+    channelInput.value = '';
+    updateEmptyPlaceholder && updateEmptyPlaceholder();
+    saveUserStreams && saveUserStreams();
   }
-  return false;
+});
+
+platformSelect.addEventListener('change', function() {
+  if (this.value === 'twitch' || this.value === 'kick') {
+    channelInput.placeholder = 'Channel Name';
+  } else if (this.value === 'youtube') {
+    channelInput.placeholder = 'YouTube Video ID';
+  }
+});
+
+// Set initial placeholder on page load
+if (platformSelect.value === 'twitch' || platformSelect.value === 'kick') {
+  channelInput.placeholder = 'Channel Name';
+} else if (platformSelect.value === 'youtube') {
+  channelInput.placeholder = 'YouTube Video ID';
 }
 
-function handleDragEnd() {
-  this.style.opacity = '1';
-  document.querySelectorAll('.stream-wrapper').forEach(item => item.classList.remove('over'));
-}
+// Add to Sidebar (with dmmOriginal support)
+function addToSidebar(channel, platform = 'twitch', label = null, folder = null) {
+  const key = makeKey(platform, channel);
+  let div = document.getElementById(`item-${key}`);
+  if (!div) {
+    div = document.createElement('div');
+    div.className = 'stream-item';
+    div.id = `item-${key}`;
 
-function enableStreamDragAndDrop() {
-  document.querySelectorAll('.stream-wrapper').forEach(item => {
-    item.setAttribute('draggable', 'true');
-    item.addEventListener('dragstart', handleDragStart, false);
-    item.addEventListener('dragenter', handleDragEnter, false);
-    item.addEventListener('dragover', handleDragOver, false);
-    item.addEventListener('dragleave', handleDragLeave, false);
-    item.addEventListener('drop', handleDrop, false);
-    item.addEventListener('dragend', handleDragEnd, false);
-  });
-}
+    // Platform logo SVGs
+    let logo = '';
+    if (platform === 'twitch') {
+      logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#9147ff"/><path d="M12 10h16l2 4v12l-4 4h-6l-4 4v-4h-4z" fill="#fff"/><rect x="17" y="16" width="2" height="7" fill="#9147ff"/><rect x="21" y="16" width="2" height="7" fill="#9147ff"/></svg>`;
+    } else if (platform === 'kick') {
+      logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#53fc18"/><path d="M12 12h5v16h-5zm6.5 0h5v7h4v2h-4v7h-5z" fill="#181818"/></svg>`;
+    } else if (platform === 'youtube') {
+      logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#ff0000"/><polygon points="17,15 27,20 17,25" fill="#fff"/></svg>`;
+    }
 
-// Call this after adding/removing streams:
-const origAddStream2 = addStream;
-addStream = function(channel, platform = 'twitch') {
-  origAddStream2(channel, platform);
-  enableStreamDragAndDrop();
-};
-const origRemoveStream2 = removeStream;
-removeStream = function(channel, platform = 'twitch') {
-  origRemoveStream2(channel, platform);
-  enableStreamDragAndDrop();
-};
-// Also call on DOMContentLoaded
-window.addEventListener('DOMContentLoaded', enableStreamDragAndDrop);
+    div.innerHTML = `
+      <span>${logo}<span>${label || channel}</span></span>
+      <button id="add-${key}">✔️</button>
+      <button id="remove-${key}">❌</button>
+      <button id="chat-${key}">💬</button>
+    `;
 
-// --- Save and restore stream order ---
-function saveUserStreamsOrder() {
-  const order = Array.from(container.children).map(el => el.id.replace('wrapper-', ''));
-  localStorage.setItem('streamOrder', JSON.stringify(order));
-}
-function restoreUserStreamsOrder() {
-  const order = JSON.parse(localStorage.getItem('streamOrder') || '[]');
-  order.forEach(key => {
-    const el = document.getElementById('wrapper-' + key);
-    if (el) container.appendChild(el);
-  });
-}
-window.addEventListener('DOMContentLoaded', restoreUserStreamsOrder);
-    window.addEventListener('DOMContentLoaded', () => {
-      // Load user streams
-      const saved = localStorage.getItem('userStreams');
-      if (saved) {
-        try {
-          const userStreams = JSON.parse(saved);
-          userStreams.forEach(obj => {
-            addToSidebar(obj.channel, obj.platform, obj.label);
-            addStream(obj.channel, obj.platform);
-          });
-        } catch (e) {
-          // Ignore parse errors
+    // Add left-click to focus/add
+    // div.addEventListener('click', function(e) {
+    //  if (e.target.tagName === 'BUTTON') return;
+    //  if (!streams[key]) {
+    //    addStream(channel, platform);
+    //  }
+    //});
+
+    // Place in the specified folder, or default to platform folder
+    let folderContent;
+    if (folder === 'dmm') {
+      let placed = false;
+      for (const [sub, members] of Object.entries(dmmSubfolders)) {
+        if (members.includes(channel.toLowerCase())) {
+          folderContent = document.getElementById(`subfolder-content-${sub}`);
+          placed = true;
+          break;
         }
       }
+      if (!placed) folderContent = document.getElementById('folder-content-dmm');
+    } else if (folder) {
+      folderContent = document.getElementById(`folder-content-${folder}`);
+    }
+    if (!folderContent) {
+      folderContent = document.getElementById(`folder-content-${platform}`) || streamList;
+    }
+    folderContent.appendChild(div);
 
-      // Collapse all folders except "current"
-      ['youtube', 'kick', 'twitch'].forEach(platform => {
-        const content = document.getElementById(`folder-content-${platform}`);
-        const header = document.querySelector(`#folder-${platform} .folder-header`);
-        if (content && header) {
-          content.style.display = 'none';
-          header.textContent = header.textContent.replace('▼', '►');
-        }
-      });
-      // Make sure "Currently Watching" is open
-      const currentContent = document.getElementById('folder-content-current');
-      const currentHeader = document.querySelector('#folder-current .folder-header');
-      if (currentContent && currentHeader) {
-        currentContent.style.display = 'block';
-        currentHeader.textContent = currentHeader.textContent.replace('►', '▼');
-      }
+    btnStates[key] = { add: false, remove: false, chat: false, platform, channel };
+    if (folder === 'dmm') {
+      btnStates[key].dmmOriginal = true;
+    }
 
-      // Show/hide chat panel based on checkbox state at startup
-      const chatToggle = document.getElementById('toggle-chat');
-      const chatPanel = document.getElementById('chat');
-      if (chatToggle && chatPanel) {
-        if (!chatToggle.checked) {
-          chatPanel.style.display = 'none';
-        } else if (activeChatChannel) {
-          chatPanel.style.display = 'block';
-        }
-      }
+    // Add click listeners for new buttons
+    addButtonListeners(div, key, platform, channel);
+
+    // Sidebar preview hover effects
+    div.addEventListener('mouseenter', function(e) {
+      console.log('Hover detected for', channel, platform); // Add this line
+      showSidebarPreview(channel, platform, e);
     });
-
-    // --- Max Streams Setting ---
-function getMaxStreams() {
-  return parseInt(localStorage.getItem('maxStreams') || document.getElementById('maxStreamsInput').value || 6, 10);
-}
-function setMaxStreams(val) {
-  localStorage.setItem('maxStreams', val);
-}
-const maxStreamsInput = document.getElementById('maxStreamsInput');
-if (maxStreamsInput) {
-  // Load saved value on startup
-  const saved = localStorage.getItem('maxStreams');
-  if (saved) maxStreamsInput.value = saved;
-  maxStreamsInput.addEventListener('change', function() {
-    setMaxStreams(this.value);
-    enforceMaxStreams();
-  });
+    div.addEventListener('mouseleave', function() {
+      clearSidebarPreview();
+    });
+  }
+  updateFolderCounts();
 }
 
-// Enforce the limit whenever a stream is added
-function enforceMaxStreams() {
-  const max = getMaxStreams();
-  const keys = Object.keys(streams);
-  if (keys.length > max) {
-    // Remove oldest non-focused streams first
-    const toRemove = keys.filter(k => k !== focusedStreamKey).slice(0, keys.length - max);
-    toRemove.forEach(key => {
-      const [platform, channel] = key.split(':');
+function addButtonListeners(div, key, platform, channel) {
+  const addButton = div.querySelector(`#add-${key}`);
+  const removeButton = div.querySelector(`#remove-${key}`);
+  const chatButton = div.querySelector(`#chat-${key}`);
+
+  if (addButton) {
+    addButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      addStream(channel, platform);
+    });
+  }
+
+  if (removeButton) {
+    removeButton.addEventListener('click', function(e) {
+      e.stopPropagation();
       removeStream(channel, platform);
     });
   }
-}
 
-// Patch addStream to enforce the limit
-const origAddStreamMax = addStream;
-addStream = function(channel, platform = 'twitch') {
-  origAddStreamMax(channel, platform);
-  enforceMaxStreams();
-};
-
-
-    // Also stop rotation on resetAll
-    const origResetAll = resetAll;
-    resetAll = function() {
-      origResetAll();
-      stopNonFocusRotation();
-    };
-
-    // Start rotation on initial load if needed
-    window.addEventListener('DOMContentLoaded', () => {
-      if (Object.keys(streams).length > 2) startNonFocusRotation();
+  if (chatButton) {
+    chatButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      toggleChat(channel, platform);
     });
-
-    function showRotationWarning() {
-      const warning = document.getElementById('rotation-warning');
-      warning.classList.add('visible');
-      if (rotationWarningTimeout) clearTimeout(rotationWarningTimeout);
-      // Fade out after 120 seconds (2 minutes)
-      rotationWarningTimeout = setTimeout(() => {
-        warning.classList.remove('visible');
-      }, 120000);
-    }
-    function hideRotationWarning() {
-      const warning = document.getElementById('rotation-warning');
-      warning.classList.remove('visible');
-      if (rotationWarningTimeout) clearTimeout(rotationWarningTimeout);
-    }
-
-    function openYouTubeChatPopout(videoId) {
-      const url = `https://www.youtube.com/live_chat?v=${videoId}`;
-      const width = 420;
-      const height = 600;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
-      window.open(
-        url,
-        'ytChatPopout',
-        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
-      );
-    }
-
-function showSidebarPreview(channel, platform, label, event) {
-  let preview = document.getElementById('sidebar-preview');
-  if (!preview) {
-    preview = document.createElement('div');
-    preview.id = 'sidebar-preview';
-    preview.style.position = 'fixed';
-    preview.style.zIndex = 9999;
-    preview.style.pointerEvents = 'none';
-    preview.style.background = '#111';
-    preview.style.border = '2px solid #9147ff';
-    preview.style.borderRadius = '8px';
-    preview.style.boxShadow = '0 4px 24px #000a';
-    preview.style.width = '320px';
-    preview.style.height = '180px';
-    preview.style.overflow = 'hidden';
-    document.body.appendChild(preview);
   }
-  let html = '';
+}
+
+function sortAllDmmSubfolders() {
+  Object.keys(dmmSubfolders).forEach(sub => {
+    const subfolder = document.getElementById(`subfolder-content-${sub}`);
+    if (!subfolder) return;
+    const items = Array.from(subfolder.children);
+    items.sort((a, b) => {
+      const aLabel = a.querySelector('span span')?.textContent?.toLowerCase() || '';
+      const bLabel = b.querySelector('span span')?.textContent?.toLowerCase() || '';
+      return aLabel.localeCompare(bLabel);
+    });
+    items.forEach(item => subfolder.appendChild(item));
+  });
+}
+
+function updateFolderCounts() {
+  // Reset all folder labels
+  document.querySelectorAll('.folder-header').forEach(header => {
+    header.innerHTML = header.innerHTML.replace(/ *\(\d+ streams\)/, '');
+  });
+
+  // Update counts for each folder
+  Object.keys(streams).forEach(key => {
+    const [platform, channel] = key.split('__');
+    const folderId = `folder-content-${platform}`;
+    const folder = document.getElementById(folderId);
+    if (folder) {
+      const count = folder.children.length;
+      const header = folder.previousElementSibling;
+      if (header) {
+        header.innerHTML = header.innerHTML.replace(/ *\(\d+ streams\)/, '') + ` (${count} streams)`;
+      }
+    }
+  });
+
+  // Update DMM subfolder counts
+  for (const [sub, members] of Object.entries(dmmSubfolders)) {
+    const present = new Set();
+    let count = 0;
+members.forEach(member => {
+  if (document.getElementById(`item-twitch__${member}`)) count++;
+  if (document.getElementById(`item-kick__${member}`)) count++;
+  if (document.getElementById(`item-youtube__${member}`)) count++;
+});
+    const subfolder = document.getElementById(`subfolder-content-${sub}`);
+    if (subfolder) {
+      const header = subfolder.previousElementSibling;
+      if (header) {
+        // Use the original label from data-label
+        const label = header.getAttribute('data-label') || header.textContent.replace(/ *\(\d+\) *▼*$/, '');
+        header.innerHTML = `${label} (${count}) ▼`;
+      }
+    }
+  }
+}
+
+function addStream(channel, platform) {
+  const key = makeKey(platform, channel);
+  if (streams[key]) return; // Stream already exists
+
+  streams[key] = { channel, platform };
+
+  // Create the wrapper div
+  const wrapper = document.createElement('div');
+  wrapper.className = 'stream-wrapper';
+  if (platform === 'twitch') wrapper.classList.add('twitch-stream');
+  if (platform === 'kick') wrapper.classList.add('kick-stream');
+  if (platform === 'youtube') wrapper.classList.add('youtube-stream');
+  wrapper.setAttribute('data-channel', channel);
+  wrapper.setAttribute('data-platform', platform);
+
+  // --- Add the focus button ---
+  const focusBtn = document.createElement('button');
+  focusBtn.className = 'focus-btn';
+  focusBtn.title = 'Focus this stream';
+  focusBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" style="display:block;">
+  <circle cx="9" cy="9" r="7" stroke="#fff" stroke-width="2"/>
+  <line x1="14.2" y1="14.2" x2="18" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+</svg>`;
+  focusBtn.onclick = (e) => {
+    e.stopPropagation();
+    focusStream(key);
+  };
+  wrapper.appendChild(focusBtn);
+
+  // Create the iframe
+  const iframe = document.createElement('iframe');
+  iframe.src = getStreamUrl(channel, platform);
+  iframe.allowFullscreen = true;
+  iframe.setAttribute('data-channel', channel);
+  iframe.setAttribute('data-platform', platform);
+  // Mute by default
+  iframe.muted = true;
+  iframe.setAttribute('muted', ''); // For some browsers
+
+  // Append iframe to wrapper, then wrapper to container
+  wrapper.appendChild(iframe);
+  container.appendChild(wrapper);
+
+  // Update focused stream if none is set
+  if (!focusedStreamKey) {
+    focusedStreamKey = key;
+    updateFocusStream();
+  }
+
+  // Reset rotation for this stream
+  resetStreamRotation(key);
+
+  // Update sidebar button states
+  updateBtnStates(key, true);
+
+  // Update folder counts
+  updateFolderCounts();
+}
+
+function removeStream(channel, platform) {
+  const key = makeKey(platform, channel);
+  if (!streams[key]) return; // Stream doesn't exist
+
+  // Remove the wrapper div
+  const wrapper = container.querySelector(`.stream-wrapper[data-channel="${channel}"][data-platform="${platform}"]`);
+  if (wrapper) {
+    container.removeChild(wrapper);
+  }
+
+  // Remove from streams object
+  delete streams[key];
+
+  // If removing the focused stream, clear the focus
+  if (focusedStreamKey === key) {
+    focusedStreamKey = null;
+    clearFocusStream();
+  }
+
+  // Update sidebar button states
+  updateBtnStates(key, false);
+
+  // Update folder counts
+  updateFolderCounts();
+}
+
+function getStreamUrl(channel, platform) {
+  let src = '';
   if (platform === 'twitch') {
-    html = `<iframe src="https://player.twitch.tv/?channel=${channel}&parent=${location.hostname}&muted=true&autoplay=true" width="320" height="180" frameborder="0" allowfullscreen></iframe>`;
+    const parent = window.location.hostname;
+    let parentParams = `parent=${parent}`;
+    if (parent === 'localhost') parentParams += '&parent=127.0.0.1';
+    if (parent === '127.0.0.1') parentParams += '&parent=localhost';
+    src = `https://player.twitch.tv/?channel=${channel}&${parentParams}&autoplay=true&muted=true`;
   } else if (platform === 'kick') {
-    html = `<iframe src="https://player.kick.com/${channel}" width="320" height="180" frameborder="0" allowfullscreen></iframe>`;
+    src = `https://player.kick.com/${channel}`;
   } else if (platform === 'youtube') {
-    let videoId = channel;
-    const ytMatch = channel.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
-    if (ytMatch) videoId = ytMatch[1];
-    if (/^[\w-]{11}$/.test(videoId)) {
-      html = `<iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1" width="320" height="180" frameborder="0" allowfullscreen></iframe>`;
+    src = `https://www.youtube.com/embed/${channel}?autoplay=1&mute=1`;
+  }
+  return src;
+}
+
+function toggleChat(channel, platform) {
+  const key = makeKey(platform, channel);
+  const chatContent = document.getElementById('chat-content');
+  const chatHeader = document.getElementById('chat-header');
+  const isOpen = chat.style.display === 'flex';
+
+  // Close chat if already open
+  if (isOpen) {
+    chat.style.display = 'none';
+    activeChatChannel = null;
+    chatContent.innerHTML = '';
+    return;
+  }
+
+  // Open chat for the selected stream
+  chat.style.display = 'flex';
+  activeChatChannel = key;
+
+  // Load chat iframe
+  const iframe = document.createElement('iframe');
+  iframe.src = `https://www.twitch.tv/embed/${channel}/chat?parent=localhost&theme=dark`;
+  iframe.allowFullscreen = true;
+  iframe.setAttribute('data-channel', channel);
+  iframe.setAttribute('data-platform', platform);
+  chatContent.innerHTML = '';
+  chatContent.appendChild(iframe);
+
+  // Update chat header
+  chatHeader
+}
+
+function updateFocusStream() {
+  if (focusedStreamKey) {
+    const [platform, channel] = focusedStreamKey.split('__');
+    const iframe = container.querySelector(`iframe[data-channel="${channel}"][data-platform="${platform}"]`);
+    if (iframe) {
+      iframe.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
-  preview.innerHTML = html;
-  preview.style.display = 'block';
-  moveSidebarPreview(event);
 }
-function moveSidebarPreview(event) {
-  const preview = document.getElementById('sidebar-preview');
-  if (preview) {
-    preview.style.left = (event.clientX + 20) + 'px';
-    preview.style.top = (event.clientY - 90) + 'px';
+
+function clearFocusStream() {
+  // Remove .focused class and mute all streams
+  container.querySelectorAll('.stream-wrapper').forEach(wrapper => {
+    wrapper.classList.remove('focused');
+    const iframe = wrapper.querySelector('iframe');
+    if (iframe) {
+      iframe.muted = true;
+      iframe.setAttribute('muted', '');
+    }
+  });
+}
+
+function resetStreamRotation(key) {
+  // Clear existing rotation timeout
+  if (nonFocusRotationInterval) {
+    clearInterval(nonFocusRotationInterval);
+    nonFocusRotationInterval = null;
+  }
+
+  // Reset rotation count
+  rotationCount = 0;
+
+  // Hide rotation warning
+  const warning = document.getElementById('rotation-warning');
+  warning.classList.remove('visible');
+
+  // If this is a focused stream, do not rotate
+  if (focusedStreamKey === key) return;
+
+  // Rotate non-focused streams every 25 minutes
+  nonFocusRotationInterval = setInterval(() => {
+    if (rotationCount >= 3) {
+      // After 3 rotations, show warning and stop rotating
+      warning.classList.add('visible');
+      clearInterval(nonFocusRotationInterval);
+      nonFocusRotationInterval = null;
+    } else {
+      // Rotate to the next non-focused stream
+      rotateToNextStream();
+      rotationCount++;
+    }
+  }, 25 * 60 * 1000); // 25 minutes
+}
+
+function rotateToNextStream() {
+  const keys = Object.keys(streams);
+  if (keys.length === 0) return;
+
+  // Find the index of the current focused stream
+  const currentIndex = keys.indexOf(focusedStreamKey);
+
+  // Calculate the index of the next stream (skip focused stream)
+  const nextIndex = (currentIndex + 1) % keys.length;
+  const nextKey = keys[nextIndex];
+
+  // Focus the next stream
+  focusStream(nextKey);
+}
+
+function focusStream(key) {
+  if (focusedStreamKey === key) {
+    // If already focused, unfocus it
+    focusedStreamKey = null;
+    clearFocusStream();
+    return;
+  }
+
+  // Clear focus from all streams and mute them
+  container.querySelectorAll('.stream-wrapper').forEach(wrapper => {
+    wrapper.classList.remove('focused');
+    const iframe = wrapper.querySelector('iframe');
+    if (iframe) {
+      iframe.muted = true;
+      iframe.setAttribute('muted', '');
+    }
+  });
+
+  // Set the new focused stream
+  focusedStreamKey = key;
+
+  // Add .focused class to the selected stream-wrapper and unmute its iframe
+  const [platform, channel] = key.split('__');
+  const wrapper = container.querySelector(`.stream-wrapper[data-channel="${channel}"][data-platform="${platform}"]`);
+  if (wrapper) {
+    wrapper.classList.add('focused');
+    const iframe = wrapper.querySelector('iframe');
+    if (iframe) {
+      iframe.muted = false;
+      iframe.removeAttribute('muted');
+    }
+    wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  // Reset rotation for the focused stream
+  resetStreamRotation(key);
+}
+
+function updateBtnStates(key, isActive) {
+  const btnState = btnStates[key];
+  if (!btnState) return;
+
+  // Update the add/remove/chat button states
+  const addButton = document.getElementById(`add-${key}`);
+  const removeButton = document.getElementById(`remove-${key}`);
+  const chatButton = document.getElementById(`chat-${key}`);
+
+  if (addButton) {
+    addButton.style.display = isActive ? 'none' : 'inline-block';
+  }
+  if (removeButton) {
+    removeButton.style.display = isActive ? 'inline-block' : 'none';
+  }
+  if (chatButton) {
+    chatButton.style.display = isActive ? 'inline-block' : 'none';
   }
 }
-function hideSidebarPreview() {
-  const preview = document.getElementById('sidebar-preview');
-  if (preview) preview.style.display = 'none';
+
+// Auto-focus the first stream on page load
+window.addEventListener('load', () => {
+  const firstKey = Object.keys(streams)[0];
+  if (firstKey) {
+    focusStream(firstKey);
+  }
+});
+
+// Close settings modal on click
+document.getElementById('close-settings').addEventListener('click', function() {
+  document.getElementById('settings-modal').style.display = 'none';
+});
+
+// Open settings modal on settings button click
+document.getElementById('settings-btn').addEventListener('click', function() {
+  document.getElementById('settings-modal').style.display = 'flex';
+});
+
+// Toggle chat panel visibility
+document.getElementById('toggle-chat').addEventListener('change', function() {
+  if (this.checked) {
+    chat.style.display = 'flex';
+    updateFocusStream();
+  } else {
+    chat.style.display = 'none';
+  }
+});
+
+// Handle form submission for removing streams
+document.getElementById('removeStreamsForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  const selected = Array.from(this.querySelectorAll('input[type="checkbox"]:checked'));
+  selected.forEach(checkbox => {
+    const key = checkbox.value;
+    const [platform, channel] = key.split('__');
+    removeStream(channel, platform);
+  });
+  this.reset();
+});
+
+// Update max active streams setting
+document.getElementById('maxStreamsInput').addEventListener('input', function() {
+  const maxStreams = Math.min(Math.max(parseInt(this.value) || 0, 1), 20);
+  this.value = maxStreams;
+  localStorage.setItem('maxActiveStreams', maxStreams);
+});
+
+// Show rotation warning if enabled
+const rotationWarningEnabled = true; // Set to false to disable
+if (rotationWarningEnabled) {
+  const warning = document.getElementById('rotation-warning');
+  warning.style.display = 'block';
+  setTimeout(() => {
+    warning.style.opacity = '0';
+  }, 5000);
+}
+
+// Focus size controls
+const focusSizeSlider = document.getElementById('focus-size-slider');
+const focusSizeValue = document.getElementById('focus-size-value');
+focusSizeSlider.addEventListener('input', function() {
+  const value = this.value;
+  focusSizeValue.textContent = `${value}%`;
+  if (focusedStreamKey) {
+    const [platform, channel] = focusedStreamKey.split('__');
+    const iframe = container.querySelector(`iframe[data-channel="${channel}"][data-platform="${platform}"]`);
+    if (iframe) {
+      iframe.style.transform = `scale(${value / 100})`;
+      iframe.style.transformOrigin = 'center center';
+    }
+  }
+});
+
+// Initial focus size value
+focusSizeValue.textContent = `${focusSizeSlider.value}%`;
+
+// Folder toggles
+function toggleFolder(folder) {
+  const content = document.getElementById(`folder-content-${folder}`);
+  if (content) {
+    content.style.display = content.style.display === 'none' ? '' : 'none';
+  }
+}
+function toggleSubfolder(sub) {
+  const content = document.getElementById(`subfolder-content-${sub}`);
+  if (content) {
+    content.style.display = content.style.display === 'none' ? '' : 'none';
+  }
+}
+
+// Sidebar preview
+function showSidebarPreview(channel, platform, event) {
+  clearSidebarPreview();
+  const previewBox = document.getElementById('sidebar-preview');
+  previewTimeout = setTimeout(() => {
+    let src = '';
+    let boxShadow = '0 4px 24px #000a'; // default
+    if (platform === 'twitch') {
+      const parent = window.location.hostname;
+      let parentParams = `parent=${parent}`;
+      if (parent === 'localhost') parentParams += '&parent=127.0.0.1';
+      if (parent === '127.0.0.1') parentParams += '&parent=localhost';
+      src = `https://player.twitch.tv/?channel=${channel}&${parentParams}&autoplay=true&muted=true`;
+      boxShadow = '0 0 28px 8px #9147ffee, 0 0 32px #000a'; // Twitch purple
+    } else if (platform === 'kick') {
+      src = `https://player.kick.com/${channel}`;
+      boxShadow = '0 0 28px 8px #53fc18ee, 0 0 32px #000a'; // Kick green
+    } else if (platform === 'youtube') {
+      src = `https://www.youtube.com/embed/${channel}?autoplay=1&mute=1`;
+      boxShadow = '0 0 28px 8px #ff0000ee, 0 0 32px #000a'; // YouTube red
+    }
+    previewBox.innerHTML = `<iframe src="${src}" width="320" height="180" frameborder="0" allowfullscreen style="display:block;"></iframe>`;
+    previewBox.style.display = 'block';
+    previewBox.style.left = (event.clientX + 20) + 'px';
+    previewBox.style.top = (event.clientY - 40) + 'px';
+    previewBox.style.width = '320px';
+    previewBox.style.height = '180px';
+    previewBox.style.background = '#111';
+    previewBox.style.zIndex = 9999;
+    previewBox.style.boxShadow = boxShadow; // <-- Add this line
+  }, 1000);
+}
+
+function clearSidebarPreview() {
+  clearTimeout(previewTimeout);
+  const previewBox = document.getElementById('sidebar-preview');
+  previewBox.style.display = 'none';
+  previewBox.innerHTML = '';
+  currentPreviewKey = null;
 }
   </script>
+  <div id="sidebar-preview"></div>
 </body>
 </html>
