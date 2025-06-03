@@ -839,7 +839,7 @@ const defaultStreamers = [
 // --- Add default streamers to sidebar in correct subfolders ---
 defaultStreamers.forEach(obj => {
   addToSidebar(obj.channel, obj.platform, obj.label, 'dmm');
-  addStream(obj.channel, obj.platform);
+  // addStream(obj.channel, obj.platform); // <-- Comment out or remove this line
   const key = makeKey(obj.platform, obj.channel);
   if (btnStates[key]) btnStates[key].dmmOriginal = true;
 });
