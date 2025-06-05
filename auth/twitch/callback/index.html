@@ -6,16 +6,15 @@
 </head>
 <body>
   <script>
-    // Parse the access token from the URL hash
-    const hash = window.location.hash.substr(1);
-    const params = new URLSearchParams(hash);
-    const accessToken = params.get('access_token');
-    if (accessToken) {
-      localStorage.setItem('twitch_access_token', accessToken);
-      window.location.href = '/';
-    } else {
-      document.body.innerHTML = '<h2>Login failed. No access token found.</h2>';
-    }
+    const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
+const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
+const scopes = [
+  'chat:read',
+  'chat:edit',
+  'user:read:subscriptions'
+].join('+');
+const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scopes}`;
+window.location = authUrl;
   </script>
 </body>
 </html>
