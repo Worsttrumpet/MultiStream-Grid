@@ -15,28 +15,33 @@
     ].join('+');
     const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scopes}`;
 
-    // Helper to extract access_token from hash
     function getTokenFromHash() {
       const match = window.location.hash.match(/access_token=([^&]+)/);
       return match ? match[1] : null;
     }
-
-    // Try to get token from hash or localStorage
-    let token = getTokenFromHash();
-    if (token) {
-      localStorage.setItem('twitch_access_token', token);
-      // Optionally, remove the token from the URL for cleanliness
-      window.location.hash = '';
-    } else {
-      token = localStorage.getItem('twitch_access_token');
+    function getErrorFromHash() {
+      const match = window.location.hash.match(/error=([^&]+)/);
+      return match ? match[1] : null;
     }
 
-    // If no token, redirect to Twitch
-    if (!token) {
-      window.location = authUrl;
+    let token = getTokenFromHash();
+    let error = getErrorFromHash();
+
+    if (token) {
+      localStorage.setItem('twitch_access_token', token);
+      window.location.hash = '';
+      console.log('Token stored:', token);
+    } else if (error) {
+      console.error('OAuth error:', error);
+      document.body.innerHTML = `<h2>OAuth Error: ${error}</h2>`;
     } else {
-      // You have a token, use it as needed
-      // Example: console.log('Twitch token:', token);
+      token = localStorage.getItem('twitch_access_token');
+      if (!token) {
+        console.log('No token found, redirecting to Twitch...');
+        window.location = authUrl;
+      } else {
+        console.log('Token from storage:', token);
+      }
     }
   </script>
 </body>
