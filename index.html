@@ -1186,7 +1186,7 @@ function getStreamUrl(channel, platform) {
     if (parent === '127.0.0.1') parentParams += '&parent=localhost';
     src = `https://player.twitch.tv/?channel=${channel}&${parentParams}&autoplay=true&muted=true`;
   } else if (platform === 'kick') {
-    src = `https://kick.com/embed/${channel}`; // <-- FIXED HERE
+    src = `https://player.kick.com/${channel}`; // <-- REVERTED TO ORIGINAL
   } else if (platform === 'youtube') {
     src = `https://www.youtube.com/embed/${channel}?autoplay=1&mute=1`;
   }
@@ -1234,7 +1234,8 @@ function toggleChat(channel, platform) {
   chatContent.appendChild(iframe);
 
   // Update chat header
-  chatHeader.textContent = 'Chat';
+  const displayName = channel.charAt(0).toUpperCase() + channel.slice(1);
+  chatHeader.textContent = `${displayName}'s Chat`;
 }
 
 function updateFocusStream() {
