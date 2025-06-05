@@ -1605,6 +1605,23 @@ document.addEventListener('DOMContentLoaded', function() {
       location.reload();
     });
   }
+
+  const loginBtn = document.getElementById('twitch-login-btn');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', async function() {
+      const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
+      const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
+      const scopes = [
+        'chat:read',
+        'chat:edit',
+        'user:read:subscriptions'
+      ].join(' ');
+      const { code_verifier, code_challenge } = await generatePKCE();
+      localStorage.setItem('twitch_pkce_verifier', code_verifier);
+      const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&code_challenge=${code_challenge}&code_challenge_method=S256`;
+      window.location = authUrl;
+    });
+  }
 });
 
 
@@ -1637,6 +1654,7 @@ document.getElementById('twitch-login-btn').addEventListener('click', async func
   const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&code_challenge=${code_challenge}&code_challenge_method=S256`;
   window.location = authUrl;
 });
+
 
 // Logout function
 function logout() {
