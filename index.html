@@ -611,6 +611,20 @@
     max-width: 100vw;
   }
 }
+
+/* Add to your <style> section */
+#removeStreamsForm label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 1em;
+}
+#removeStreamsForm input[type="checkbox"] {
+  accent-color: #9147ff;
+  width: 16px;
+  height: 16px;
+}
 </style>
 </head>
 <body>
@@ -732,37 +746,35 @@
       <span style="color:#bbb;font-size:1em;">MultiStream Grid &copy; 2025</span>
     </div>
   <div id="settings-modal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:#000a; z-index:200; align-items:center; justify-content:center;">
-    <div style="background:#222; color:#fff; padding:32px 24px 24px 24px; border-radius:12px; min-width:300px; max-width:90vw; box-shadow:0 4px 32px #000a; position:relative;">
+    <div style="background:#222; color:#fff; padding:32px 24px 24px 24px; border-radius:12px; min-width:320px; max-width:95vw; box-shadow:0 4px 32px #000a; position:relative;">
       <button id="close-settings" style="position:absolute; top:10px; right:14px; background:none; border:none; color:#fff; font-size:1.5em; cursor:pointer;">×</button>
       <h2 style="margin-top:0;">Settings</h2>
-      <div style="margin-bottom:16px;">
-        <label>
-          <input type="checkbox" id="toggle-chat" checked>
-          Show Chat Panel
-        </label>
-      </div>
-      <!-- Move Remove Streams section here -->
+
+      <h3 style="margin-bottom:8px; margin-top:0;">Remove Streams</h3>
+      <form id="removeStreamsForm" style="max-height:140px;overflow-y:auto;border:1px solid #333;border-radius:6px;padding:8px 6px 8px 8px;background:#181818;margin-bottom:10px;"></form>
+      <button id="removeSelectedBtn" style="background:#ff4c4c;color:#fff;border:none;padding:7px 16px;border-radius:4px;cursor:pointer;font-size:1em;margin-bottom:18px;transition:background 0.15s;">Remove Selected</button>
+
+      <h3 style="margin-bottom:8px; margin-top:0;">Max Active Streams</h3>
       <div style="margin-bottom:18px;">
-        <strong>Remove Streams</strong>
-        <form id="removeStreamsForm" style="max-height:180px;overflow-y:auto;margin-top:8px;margin-bottom:8px;"></form>
-        <button id="removeSelectedBtn" style="background:#ff4c4c;color:#fff;border:none;padding:5px 12px;border-radius:4px;cursor:pointer;">Remove Selected</button>
+        <input type="number" id="maxStreamsInput" max="99" placeholder="No limit" style="width:80px; margin-left:0;">
+        <span style="font-size:0.98em; color:#bbb; margin-left:8px;">(leave blank for no limit)</span>
+        <button id="saveMaxStreamsBtn" style="margin-left:10px; padding:4px 12px; border-radius:4px; border:none; background:#9147ff; color:#fff; cursor:pointer;">Save</button>
       </div>
-      <div style="margin-bottom:18px;">
-  <label for="maxStreamsInput"><strong>Max Active Streams:</strong></label>
-  <input type="number" id="maxStreamsInput" min="1" max="20" value="6" style="width:60px; margin-left:8px;">
-</div>
+
       <button id="resetBtn" onclick="confirmDeleteAllStreams()" style="
         background: #ff4c4c;
         color: #fff;
         border: none;
-        padding: 7px 18px;
+        padding: 10px 0;
         cursor: pointer;
         border-radius: 4px;
         font-size: 1em;
         margin-top: 10px;
         width: 100%;
+        transition: background 0.15s;
       ">Delete All Streams</button>
-      <div style="color:#888; font-size:0.95em; margin-top:16px;">More settings coming soon!</div>
+
+      <div style="color:#888; font-size:0.95em; margin-top:18px; text-align:center;">More settings coming soon!</div>
     </div>
   </div>
   <!-- Place this after your #container div -->
@@ -908,15 +920,16 @@ function addToSidebar(channel, platform = 'twitch', label = null, folder = null)
     // Platform logo SVGs
     let logo = '';
     if (platform === 'twitch') {
-      logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#9147ff"/><path d="M12 10h16l2 4v12l-4 4h-6l-4 4v-4h-4z" fill="#fff"/><rect x="17" y="16" width="2" height="7" fill="#9147ff"/><rect x="21" y="16" width="2" height="7" fill="#9147ff"/></svg>`;
+      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#9147ff"/><path d="M12 10h16l2 4v12l-4 4h-6l-4 4v-4h-4z" fill="#fff"/><rect x="17" y="16" width="2" height="7" fill="#9147ff"/><rect x="21" y="16" width="2" height="7" fill="#9147ff"/></svg>`;
     } else if (platform === 'kick') {
-      logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#53fc18"/><path d="M12 12h5v16h-5zm6.5 0h5v7h4v2h-4v7h-5z" fill="#181818"/></svg>`;
+      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#53fc18"/><path d="M12 12h5v16h-5zm6.5 0h5v7h4v2h-4v7h-5z" fill="#181818"/></svg>`;
     } else if (platform === 'youtube') {
-      logo = `<svg width="20" height="20" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#ff0000"/><polygon points="17,15 27,20 17,25" fill="#fff"/></svg>`;
+      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#ff0000"/><polygon points="17,15 27,20 17,25" fill="#fff"/></svg>`;
     }
+    const label = `${logo} <span style="margin-left:6px">${channel}</span>`;
 
     div.innerHTML = `
-      <span>${logo}<span>${label || channel}</span></span>
+      <span>${label}</span>
       <button id="add-${key}">✔️</button>
       <button id="remove-${key}">❌</button>
       <button id="chat-${key}">💬</button>
@@ -1040,6 +1053,14 @@ function updateFolderCounts() {
 
 function addStream(channel, platform) {
   const key = makeKey(platform, channel);
+
+  // Enforce max streams if set
+  const max = parseInt(localStorage.getItem('maxActiveStreams'));
+  if (!isNaN(max) && Object.keys(streams).length >= max) {
+    alert('You have reached the maximum number of active streams.\n\nIf you want to watch more streams, head to Settings and increase the limit!');
+    return;
+  }
+
   if (streams[key]) return; // Stream already exists
 
   streams[key] = { channel, platform };
@@ -1102,6 +1123,7 @@ function addStream(channel, platform) {
 
   // Update folder counts
   updateFolderCounts();
+  updateRemoveStreamsForm();
 }
 
 function removeStream(channel, platform) {
@@ -1152,6 +1174,7 @@ function removeStream(channel, platform) {
 
   // Update folder counts
   updateFolderCounts();
+  updateRemoveStreamsForm();
 }
 
 function getStreamUrl(channel, platform) {
@@ -1190,15 +1213,28 @@ function toggleChat(channel, platform) {
 
   // Load chat iframe
   const iframe = document.createElement('iframe');
-  iframe.src = `https://www.twitch.tv/embed/${channel}/chat?parent=localhost&theme=dark`;
+  if (platform === 'twitch') {
+    const parent = window.location.hostname;
+    let parentParams = `parent=${parent}`;
+    if (parent === 'localhost') parentParams += '&parent=127.0.0.1';
+    if (parent === '127.0.0.1') parentParams += '&parent=localhost';
+    iframe.src = `https://www.twitch.tv/embed/${channel}/chat?${parentParams}&theme=dark`;
+  } else if (platform === 'kick') {
+    iframe.src = `https://kick.com/embed-chat/${channel}?theme=dark`;
+  } else if (platform === 'youtube') {
+    iframe.src = `https://www.youtube.com/live_chat?v=${channel}&embed_domain=${window.location.hostname}&dark_theme=1`;
+  }
   iframe.allowFullscreen = true;
   iframe.setAttribute('data-channel', channel);
   iframe.setAttribute('data-platform', platform);
+  iframe.style.width = '100%';
+  iframe.style.height = '100%';
+  iframe.style.border = 'none';
   chatContent.innerHTML = '';
   chatContent.appendChild(iframe);
 
   // Update chat header
-  chatHeader
+  chatHeader.textContent = 'Chat';
 }
 
 function updateFocusStream() {
@@ -1344,16 +1380,7 @@ document.getElementById('close-settings').addEventListener('click', function() {
 // Open settings modal on settings button click
 document.getElementById('settings-btn').addEventListener('click', function() {
   document.getElementById('settings-modal').style.display = 'flex';
-});
-
-// Toggle chat panel visibility
-document.getElementById('toggle-chat').addEventListener('change', function() {
-  if (this.checked) {
-    chat.style.display = 'flex';
-    updateFocusStream();
-  } else {
-    chat.style.display = 'none';
-  }
+  updateRemoveStreamsForm(); // <-- Add this line
 });
 
 // Handle form submission for removing streams
@@ -1370,9 +1397,33 @@ document.getElementById('removeStreamsForm').addEventListener('submit', function
 
 // Update max active streams setting
 document.getElementById('maxStreamsInput').addEventListener('input', function() {
-  const maxStreams = Math.min(Math.max(parseInt(this.value) || 0, 1), 20);
-  this.value = maxStreams;
-  localStorage.setItem('maxActiveStreams', maxStreams);
+  // Allow blank for no limit
+  if (this.value === '') return;
+  let val = parseInt(this.value);
+  if (isNaN(val) || val < 1) {
+    this.value = '';
+  }
+});
+
+// Load saved value or default to no limit
+const maxStreamsInput = document.getElementById('maxStreamsInput');
+const savedMax = localStorage.getItem('maxActiveStreams');
+if (savedMax && !isNaN(savedMax)) {
+  maxStreamsInput.value = savedMax;
+} else {
+  maxStreamsInput.value = '';
+}
+
+// Save button logic
+document.getElementById('saveMaxStreamsBtn').addEventListener('click', function() {
+  const val = maxStreamsInput.value.trim();
+  if (val === '' || isNaN(val) || parseInt(val) < 1) {
+    localStorage.removeItem('maxActiveStreams');
+    alert('No limit set for active streams.');
+  } else {
+    localStorage.setItem('maxActiveStreams', parseInt(val));
+    alert('Max active streams saved!');
+  }
 });
 
 // Show rotation warning if enabled
@@ -1467,7 +1518,90 @@ function clearSidebarPreview() {
   previewBox.innerHTML = '';
   currentPreviewKey = null;
 }
+
+function updateRemoveStreamsForm() {
+  const form = document.getElementById('removeStreamsForm');
+  if (!form) return;
+  form.innerHTML = '';
+
+  // Remove previous event listeners by cloning the node
+  const newForm = form.cloneNode(false);
+  form.parentNode.replaceChild(newForm, form);
+
+  // Find all sidebar stream items
+  const sidebarItems = document.querySelectorAll('.stream-item[id^="item-"]');
+  if (sidebarItems.length === 0) {
+    newForm.innerHTML = '<div style="color:#bbb; text-align:center; padding:12px 0;">No streams to remove.</div>';
+    document.getElementById('removeSelectedBtn').disabled = true;
+    return;
+  }
+
+  sidebarItems.forEach(div => {
+    const key = div.id.replace('item-', '');
+    // Detect platform by SVG color or fallback to key
+    let platform = '';
+    if (div.querySelector('svg')?.outerHTML.includes('#9147ff')) platform = 'twitch';
+    else if (div.querySelector('svg')?.outerHTML.includes('#53fc18')) platform = 'kick';
+    else if (div.querySelector('svg')?.outerHTML.includes('#ff0000')) platform = 'youtube';
+    else platform = key.split('__')[0];
+
+    // Platform logo SVGs
+    let logo = '';
+    let color = '#fff';
+    if (platform === 'twitch') {
+      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#9147ff"/><path d="M12 10h16l2 4v12l-4 4h-6l-4 4v-4h-4z" fill="#fff"/><rect x="17" y="16" width="2" height="7" fill="#9147ff"/><rect x="21" y="16" width="2" height="7" fill="#9147ff"/></svg>`;
+      color = '#9147ff';
+    } else if (platform === 'kick') {
+      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#53fc18"/><path d="M12 12h5v16h-5zm6.5 0h5v7h4v2h-4v7h-5z" fill="#181818"/></svg>`;
+      color = '#53fc18';
+    } else if (platform === 'youtube') {
+      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#ff0000"/><polygon points="17,15 27,20 17,25" fill="#fff"/></svg>`;
+      color = '#ff0000';
+    }
+
+    const channel = div.querySelector('span span')?.textContent || key.split('__')[1];
+    const label = `
+      ${logo}
+      <span style="color:${color};font-weight:bold;margin-left:6px;text-transform:capitalize;">${platform}</span>
+      <span style="margin-left:6px">${channel}</span>
+    `;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = key;
+    checkbox.style.marginRight = '8px';
+
+    const labelElem = document.createElement('label');
+    labelElem.innerHTML = '';
+    labelElem.appendChild(checkbox);
+    labelElem.insertAdjacentHTML('beforeend', label);
+    newForm.appendChild(labelElem);
+  });
+
+  document.getElementById('removeSelectedBtn').disabled = true;
+  newForm.addEventListener('change', function() {
+    document.getElementById('removeSelectedBtn').disabled = !newForm.querySelector('input[type="checkbox"]:checked');
+  });
+}
+
+// Twitch login button logic
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('twitch-login-btn').addEventListener('click', function() {
+    const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
+    const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
+    const scopes = [
+      'chat:read',
+      'chat:edit',
+      'user:read:subscriptions'
+    ].join('+');
+    const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scopes}`;
+    window.location = authUrl;
+  });
+});
   </script>
   <div id="sidebar-preview"></div>
+  <button id="twitch-login-btn" style="background:#9147ff;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-size:1em;cursor:pointer;">
+  Log in with Twitch
+</button>
 </body>
 </html>
