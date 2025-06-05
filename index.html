@@ -25,10 +25,12 @@
   flex-direction: column;
   position: relative;
   min-height: 0;
-  padding: 0 0 0 0; /* Remove all padding */
   border-right: 2px solid #9147ff;
-  flex: 0 0 320px; /* or your desired sidebar width */
+  flex: 0 0 320px;
   background: transparent;
+  max-width: 100vw;
+  width: 100%;
+  box-sizing: border-box;
 }
 
   /* Add padding to the stream list container */
@@ -45,7 +47,7 @@
       transparent 8px,
       transparent 16px
     );
-    padding-right: 12px;
+    padding-right: 20px; /* Increase right padding */
   }
   #container {
   display: grid;
@@ -126,29 +128,30 @@
 
 /* Add left padding to each stream item for extra space */
 .stream-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 0 6px 6px;
-    border-bottom: 1px solid #232323;
-    background: transparent;
-    min-height: 36px;
-    position: relative;
-    width: 100%;
-    min-width: 0;
-    cursor: pointer;
-  }
-  .stream-item:last-child {
-    border-bottom: none;
-  }
-  .stream-item span {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    word-break: break-all;
-  }
-  .stream-item button {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 6px; /* top, right, bottom, left */
+  border-bottom: 1px solid #232323;
+  background: transparent;
+  min-height: 36px;
+  cursor: pointer;
+  overflow: visible;
+}
+.stream-item:last-child {
+  border-bottom: none;
+}
+.stream-item span {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  word-break: break-all;
+}
+.stream-item button {
   cursor: pointer;
   background: #333;
   border: none;
@@ -157,12 +160,14 @@
   border-radius: 4px;
   transition: background 0.15s, border 0.15s;
   pointer-events: auto;
+  margin-right: 4px;
 }
-
+.stream-item button:last-child {
+  margin-right: 0;
+}
 .stream-item button:hover {
   background: #555;
 }
-
 .stream-item button.active {
   background: #444;
   color: #fff;
@@ -367,9 +372,12 @@
     border-bottom: 1px solid #222;
   }
   .folder-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0; /* or gap: 4px; for spacing between items */
+    padding-right: calc(12px + 0.5em); /* Only folder-content gets right padding */
+    box-sizing: border-box;
+  }
+  .subfolder-content {
+    padding-left: 10px; /* Only left padding for indentation */
+    box-sizing: border-box;
   }
   #rotation-warning {
   display: block;
@@ -593,10 +601,15 @@
   font-size: 1em;
 }
 .subfolder-content {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  padding-left: 10px;
+  padding-left: 10px; /* Only left padding for indentation */
+  box-sizing: border-box;
+}
+
+@media (max-width: 500px) {
+  #sidebar {
+    flex: 0 0 100vw;
+    max-width: 100vw;
+  }
 }
 </style>
 </head>
@@ -937,7 +950,7 @@ function addToSidebar(channel, platform = 'twitch', label = null, folder = null)
     }
     folderContent.appendChild(div);
 
-    btnStates[key] = { add: false, remove: false, chat: false, platform, channel };
+    btnStates[key] = { add: false, remove: false, chat: false, platform, channel, originalFolder: folder };
     if (folder === 'dmm') {
       btnStates[key].dmmOriginal = true;
     }
@@ -999,41 +1012,27 @@ function sortAllDmmSubfolders() {
 }
 
 function updateFolderCounts() {
-  // Reset all folder labels
-  document.querySelectorAll('.folder-header').forEach(header => {
-    header.innerHTML = header.innerHTML.replace(/ *\(\d+ streams\)/, '');
-  });
-
-  // Update counts for each folder
-  Object.keys(streams).forEach(key => {
-    const [platform, channel] = key.split('__');
-    const folderId = `folder-content-${platform}`;
-    const folder = document.getElementById(folderId);
-    if (folder) {
-      const count = folder.children.length;
-      const header = folder.previousElementSibling;
-      if (header) {
-        header.innerHTML = header.innerHTML.replace(/ *\(\d+ streams\)/, '') + ` (${count} streams)`;
-      }
+  // Update counts for each main folder
+  document.querySelectorAll('.folder').forEach(folder => {
+    const header = folder.querySelector('.folder-header');
+    const content = folder.querySelector('.folder-content');
+    if (header && content) {
+      // Count only direct children with .stream-item
+      const count = content.querySelectorAll('.stream-item').length;
+      header.innerHTML = header.innerHTML.replace(/ *\(\d+ streams\)/, '') + ` (${count} streams)`;
     }
   });
 
   // Update DMM subfolder counts
-  for (const [sub, members] of Object.entries(dmmSubfolders)) {
-    const present = new Set();
-    let count = 0;
-members.forEach(member => {
-  if (document.getElementById(`item-twitch__${member}`)) count++;
-  if (document.getElementById(`item-kick__${member}`)) count++;
-  if (document.getElementById(`item-youtube__${member}`)) count++;
-});
+  for (const sub of Object.keys(dmmSubfolders)) {
     const subfolder = document.getElementById(`subfolder-content-${sub}`);
     if (subfolder) {
       const header = subfolder.previousElementSibling;
       if (header) {
-        // Use the original label from data-label
-        const label = header.getAttribute('data-label') || header.textContent.replace(/ *\(\d+\) *▼*$/, '');
-        header.innerHTML = `${label} (${count}) ▼`;
+        // Count only .stream-item children actually in this subfolder
+        const count = subfolder.querySelectorAll('.stream-item').length;
+        const label = header.getAttribute('data-label') || header.textContent.replace(/ *\(\d+ streams?\) *[▼►]*$/, '');
+        header.innerHTML = `${label} (${count} streams) ▼`;
       }
     }
   }
@@ -1082,6 +1081,13 @@ function addStream(channel, platform) {
   wrapper.appendChild(iframe);
   container.appendChild(wrapper);
 
+  // Move sidebar item to "Currently Watching"
+  const div = document.getElementById(`item-${key}`);
+  const currentFolder = document.getElementById('folder-content-current');
+  if (div && currentFolder) {
+    currentFolder.appendChild(div);
+  }
+
   // Update focused stream if none is set
   if (!focusedStreamKey) {
     focusedStreamKey = key;
@@ -1115,6 +1121,30 @@ function removeStream(channel, platform) {
   if (focusedStreamKey === key) {
     focusedStreamKey = null;
     clearFocusStream();
+  }
+
+  // Move sidebar item back to original folder
+  const div = document.getElementById(`item-${key}`);
+  const originalFolder = btnStates[key]?.originalFolder;
+  let folderContent = null;
+  if (originalFolder === 'dmm') {
+    // Find correct subfolder
+    let placed = false;
+    for (const [sub, members] of Object.entries(dmmSubfolders)) {
+      if (members.includes(channel.toLowerCase())) {
+        folderContent = document.getElementById(`subfolder-content-${sub}`);
+        placed = true;
+        break;
+      }
+    }
+    if (!placed) folderContent = document.getElementById('folder-content-dmm');
+  } else if (originalFolder) {
+    folderContent = document.getElementById(`folder-content-${originalFolder}`);
+  } else {
+    folderContent = document.getElementById(`folder-content-${platform}`) || streamList;
+  }
+  if (div && folderContent) {
+    folderContent.appendChild(div);
   }
 
   // Update sidebar button states
@@ -1377,14 +1407,23 @@ focusSizeValue.textContent = `${focusSizeSlider.value}%`;
 // Folder toggles
 function toggleFolder(folder) {
   const content = document.getElementById(`folder-content-${folder}`);
-  if (content) {
-    content.style.display = content.style.display === 'none' ? '' : 'none';
+  const header = document.querySelector(`#folder-${folder} .folder-header`);
+  if (content && header) {
+    const isOpen = content.style.display !== 'none';
+    content.style.display = isOpen ? 'none' : '';
+    // Update triangle
+    header.innerHTML = header.innerHTML.replace(/[▼►]/, isOpen ? '►' : '▼');
   }
 }
+
 function toggleSubfolder(sub) {
   const content = document.getElementById(`subfolder-content-${sub}`);
-  if (content) {
-    content.style.display = content.style.display === 'none' ? '' : 'none';
+  const header = document.querySelector(`#subfolder-${sub} .subfolder-header`);
+  if (content && header) {
+    const isOpen = content.style.display !== 'none';
+    content.style.display = isOpen ? 'none' : '';
+    // Update triangle
+    header.innerHTML = header.innerHTML.replace(/[▼►]/, isOpen ? '►' : '▼');
   }
 }
 
