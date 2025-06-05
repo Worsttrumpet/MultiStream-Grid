@@ -1604,7 +1604,49 @@ document.addEventListener('DOMContentLoaded', function() {
   if (loginBtn && token) {
     loginBtn.style.display = 'none';
   }
+  fetch('https://api.twitch.tv/helix/users', {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Client-Id': 'of7hb08b4r8e891rfh678346ctns5l'
+    }
+  });
 });
+
+async function generatePKCE() {
+  // Generate a random code_verifier
+  const array = new Uint8Array(32);
+  window.crypto.getRandomValues(array);
+  const code_verifier = btoa(String.fromCharCode(...array)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 64);
+
+  // SHA256 hash and base64url encode for code_challenge
+  const encoder = new TextEncoder();
+  const data = encoder.encode(code_verifier);
+  const digest = await window.crypto.subtle.digest('SHA-256', data);
+  const code_challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  return { code_verifier, code_challenge };
+}
+
+document.getElementById('twitch-login-btn').addEventListener('click', async function() {
+  const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
+  const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
+  const scopes = [
+    'chat:read',
+    'chat:edit',
+    'user:read:subscriptions'
+  ].join(' ');
+  const { code_verifier, code_challenge } = await generatePKCE();
+  localStorage.setItem('twitch_pkce_verifier', code_verifier);
+  const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&code_challenge=${code_challenge}&code_challenge_method=S256`;
+  window.location = authUrl;
+});
+
+// Logout function
+function logout() {
+  localStorage.removeItem('twitch_access_token');
+  location.reload();
+}
   </script>
   <div id="sidebar-preview"></div>
   <button id="twitch-login-btn" style="background:#9147ff;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-size:1em;cursor:pointer;">
