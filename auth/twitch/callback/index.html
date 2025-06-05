@@ -7,14 +7,21 @@
 <body>
   <script>
     const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
-const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
-const scopes = [
-  'chat:read',
-  'chat:edit',
-  'user:read:subscriptions'
-].join('+');
-const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scopes}`;
-window.location = authUrl;
+    const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
+    const scopes = [
+      'chat:read',
+      'chat:edit',
+      'user:read:subscriptions'
+    ].join('+');
+    const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scopes}`;
+
+    // Only redirect if there is no access token in the URL
+    if (!window.location.hash.includes('access_token')) {
+      window.location = authUrl;
+    } else {
+      // Handle the access token here (e.g., extract and use it)
+      // Example: const token = window.location.hash.match(/access_token=([^&]+)/)[1];
+    }
   </script>
 </body>
 </html>
