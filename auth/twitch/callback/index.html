@@ -6,15 +6,7 @@
 </head>
 <body>
   <script>
-    const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
-    const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
-    const scopes = [
-      'chat:read',
-      'chat:edit',
-      'user:read:subscriptions'
-    ].join('+');
-    const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scopes}`;
-
+    // Extract token or error from URL hash
     function getTokenFromHash() {
       const match = window.location.hash.match(/access_token=([^&]+)/);
       return match ? match[1] : null;
@@ -24,32 +16,19 @@
       return match ? match[1] : null;
     }
 
-    let token = getTokenFromHash();
-    let error = getErrorFromHash();
+    const token = getTokenFromHash();
+    const error = getErrorFromHash();
 
     if (token) {
       localStorage.setItem('twitch_access_token', token);
       window.location.hash = '';
-      console.log('Token stored:', token);
       // Redirect to your main app page after successful login
-      window.location.href = '/'; // Change '/' to your main app's URL if needed
+      window.location.href = '/'; // Change this if your main page is elsewhere
     } else if (error) {
-      console.error('OAuth error:', error);
       document.body.innerHTML = `<h2>OAuth Error: ${error}</h2>`;
     } else {
-      token = localStorage.getItem('twitch_access_token');
-      if (!token) {
-        console.log('No token found, redirecting to Twitch...');
-        window.location = authUrl;
-      } else {
-        console.log('Token from storage:', token);
-      }
-    }
-
-    // After confirming the user is logged in
-    const loginBtn = document.getElementById('twitch-login-btn');
-    if (loginBtn) {
-      loginBtn.style.display = 'none';
+      // No token or error, show a message or redirect as fallback
+      document.body.innerHTML = '<h2>No token found. Please try logging in again.</h2>';
     }
   </script>
 </body>
