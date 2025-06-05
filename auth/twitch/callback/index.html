@@ -31,7 +31,8 @@
       localStorage.setItem('twitch_access_token', token);
       window.location.hash = '';
       console.log('Token stored:', token);
-      document.body.innerHTML = '<h2>Login successful! You can close this window.</h2>';
+      // Redirect to your main app page after successful login
+      window.location.href = '/'; // Change '/' to your main app's URL if needed
     } else if (error) {
       console.error('OAuth error:', error);
       document.body.innerHTML = `<h2>OAuth Error: ${error}</h2>`;
