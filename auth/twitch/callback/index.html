@@ -15,12 +15,28 @@
     ].join('+');
     const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scopes}`;
 
-    // Only redirect if there is no access token in the URL
-    if (!window.location.hash.includes('access_token')) {
+    // Helper to extract access_token from hash
+    function getTokenFromHash() {
+      const match = window.location.hash.match(/access_token=([^&]+)/);
+      return match ? match[1] : null;
+    }
+
+    // Try to get token from hash or localStorage
+    let token = getTokenFromHash();
+    if (token) {
+      localStorage.setItem('twitch_access_token', token);
+      // Optionally, remove the token from the URL for cleanliness
+      window.location.hash = '';
+    } else {
+      token = localStorage.getItem('twitch_access_token');
+    }
+
+    // If no token, redirect to Twitch
+    if (!token) {
       window.location = authUrl;
     } else {
-      // Handle the access token here (e.g., extract and use it)
-      // Example: const token = window.location.hash.match(/access_token=([^&]+)/)[1];
+      // You have a token, use it as needed
+      // Example: console.log('Twitch token:', token);
     }
   </script>
 </body>
