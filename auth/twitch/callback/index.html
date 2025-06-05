@@ -45,6 +45,12 @@
         console.log('Token from storage:', token);
       }
     }
+
+    // After confirming the user is logged in
+    const loginBtn = document.getElementById('twitch-login-btn');
+    if (loginBtn) {
+      loginBtn.style.display = 'none';
+    }
   </script>
 </body>
 </html>
