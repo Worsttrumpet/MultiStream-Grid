@@ -1586,31 +1586,26 @@ function updateRemoveStreamsForm() {
 
 // Twitch login button logic
 document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('twitch-login-btn').addEventListener('click', function() {
-    const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
-    const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
-    const scopes = [
-      'chat:read',
-      'chat:edit',
-      'user:read:subscriptions'
-    ].join('+');
-    const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${scopes}`;
-    window.location = authUrl;
-  });
-
-  // Hide login button if token is present
   const loginBtn = document.getElementById('twitch-login-btn');
+  const logoutBtn = document.getElementById('twitch-logout-btn');
   const token = localStorage.getItem('twitch_access_token');
-  if (loginBtn && token) {
-    loginBtn.style.display = 'none';
+
+  if (token) {
+    if (loginBtn) loginBtn.style.display = 'none';
+    if (logoutBtn) logoutBtn.style.display = 'inline-block';
+  } else {
+    if (loginBtn) loginBtn.style.display = 'inline-block';
+    if (logoutBtn) logoutBtn.style.display = 'none';
   }
-  fetch('https://api.twitch.tv/helix/users', {
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Client-Id': 'of7hb08b4r8e891rfh678346ctns5l'
-    }
-  });
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', function() {
+      localStorage.removeItem('twitch_access_token');
+      location.reload();
+    });
+  }
 });
+
 
 async function generatePKCE() {
   // Generate a random code_verifier
@@ -1651,6 +1646,9 @@ function logout() {
   <div id="sidebar-preview"></div>
   <button id="twitch-login-btn" style="background:#9147ff;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-size:1em;cursor:pointer;">
   Log in with Twitch
+</button>
+<button id="twitch-logout-btn" style="display:none;background:#333;color:#fff;padding:8px 18px;border:none;border-radius:6px;font-size:1em;cursor:pointer;">
+  Log out of Twitch
 </button>
 </body>
 </html>
