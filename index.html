@@ -146,7 +146,7 @@
         const input = document.getElementById('streamer-input');
         const suggestBox = document.getElementById('suggestions-box');
 
-        // Notification system
+        // Toast notification helper
         function showToast(message) {
             const toast = document.createElement('div');
             toast.textContent = message;
@@ -165,7 +165,7 @@
             }, 2500);
         }
 
-        // Save state to LocalStorage and update dynamic URL
+        // Updated: Ensures URL updates immediately for sharing
         function saveState() {
             const streams = Array.from(document.querySelectorAll('.watching-item')).map(li => {
                 const parts = li.id.replace('list-', '').split('-');
@@ -174,7 +174,7 @@
             localStorage.setItem('msGrid_streams', JSON.stringify(streams));
             localStorage.setItem('msGrid_mode', isGridMode);
 
-            // Create compressed URL parameter for up to 150 streamers
+            // Sync address bar URL using Base64 to keep it clean for many streamers
             if (streams.length > 0) {
                 const rawString = streams.map(s => `${s.platform}:${s.name}`).join(',');
                 const encoded = btoa(rawString); 
@@ -184,16 +184,19 @@
             }
         }
 
-        // Handle the Share button
+        // Action for the Share button
         function copyShareLink() {
+            // Re-run saveState just in case to capture latest changes
+            saveState();
             navigator.clipboard.writeText(window.location.href).then(() => {
                 showToast('🚀 Link Copied to Clipboard!');
             }).catch(err => {
-                console.error('Failed to copy link: ', err);
+                console.error('Failed to copy: ', err);
+                showToast('❌ Copy Failed');
             });
         }
 
-        // Load state from URL first (share links), then fall back to LocalStorage
+        // Load streamers from shared URL or LocalStorage
         function loadState() {
             const params = new URLSearchParams(window.location.search);
             const encodedData = params.get('g');
@@ -207,7 +210,7 @@
                         return { platform, name };
                     });
                 } catch (e) {
-                    console.error("Invalid share link format.");
+                    console.error("Invalid share link.");
                     streamsToLoad = JSON.parse(localStorage.getItem('msGrid_streams') || '[]');
                 }
             } else {
