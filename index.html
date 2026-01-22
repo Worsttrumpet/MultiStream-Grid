@@ -87,7 +87,6 @@
         .watching-item.kick { border-left: 4px solid var(--kick-green); box-shadow: inset 4px 0 10px rgba(83, 252, 24, 0.2); }
         .watching-item.youtube { border-left: 4px solid var(--yt-red); box-shadow: inset 4px 0 10px rgba(255, 0, 0, 0.2); }
 
-        /* --- CLEAN & GLOWING STREAM GRID --- */
         main { flex-grow: 1; display: flex; overflow: hidden; background: #000; }
         #stream-container { 
             flex-grow: 1; display: grid; 
@@ -112,7 +111,8 @@
 
         .sidebar-footer { padding: 15px; border-top: 1px solid #2d2d30; background: var(--panel-bg); }
         .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-        .footer-btn { padding: 10px; border-radius: 6px; border: 1px solid #333; background: #26262c; color: #ccc; cursor: pointer; font-size: 0.7rem; }
+        .footer-btn { padding: 10px; border-radius: 6px; border: 1px solid #333; background: #26262c; color: #ccc; cursor: pointer; font-size: 0.7rem; transition: background 0.2s; }
+        .footer-btn:hover { background: #3a3a3d; }
         .copyright { opacity: 0.3; font-size: 0.65rem; text-align: center; margin: 0; }
     </style>
 </head>
@@ -132,8 +132,8 @@
             <div class="footer-grid">
                 <button class="footer-btn" onclick="toggleLayoutMode()">🖥️ Layout</button>
                 <button class="footer-btn" onclick="clearAll()">🗑️ Clear</button>
-                <button class="footer-btn" onclick="alert('Settings Saved!')">⚙️ Settings</button>
-                <button class="footer-btn" onclick="alert('Link Copied!')">🔗 Share</button>
+                <button class="footer-btn" onclick="showToast('Settings Saved!')">⚙️ Settings</button>
+                <button class="footer-btn" onclick="copyShareLink()">🔗 Share</button>
             </div>
             <p class="copyright">© <span id="year"></span> MultiStream Grid.</p>
         </footer>
@@ -146,6 +146,26 @@
         const input = document.getElementById('streamer-input');
         const suggestBox = document.getElementById('suggestions-box');
 
+        // Notification system
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = `
+                position: fixed; bottom: 20px; right: 20px;
+                background: var(--twitch-purple); color: white;
+                padding: 12px 24px; border-radius: 8px;
+                font-weight: bold; z-index: 9999;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+                transition: opacity 0.3s ease;
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2500);
+        }
+
+        // Save state to LocalStorage and update dynamic URL
         function saveState() {
             const streams = Array.from(document.querySelectorAll('.watching-item')).map(li => {
                 const parts = li.id.replace('list-', '').split('-');
@@ -153,14 +173,49 @@
             });
             localStorage.setItem('msGrid_streams', JSON.stringify(streams));
             localStorage.setItem('msGrid_mode', isGridMode);
+
+            // Create compressed URL parameter for up to 150 streamers
+            if (streams.length > 0) {
+                const rawString = streams.map(s => `${s.platform}:${s.name}`).join(',');
+                const encoded = btoa(rawString); 
+                window.history.replaceState(null, '', `?g=${encoded}`);
+            } else {
+                window.history.replaceState(null, '', window.location.pathname);
+            }
         }
 
+        // Handle the Share button
+        function copyShareLink() {
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                showToast('🚀 Link Copied to Clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy link: ', err);
+            });
+        }
+
+        // Load state from URL first (share links), then fall back to LocalStorage
         function loadState() {
-            const savedStreams = JSON.parse(localStorage.getItem('msGrid_streams') || '[]');
+            const params = new URLSearchParams(window.location.search);
+            const encodedData = params.get('g');
+            let streamsToLoad = [];
+
+            if (encodedData) {
+                try {
+                    const decoded = atob(encodedData);
+                    streamsToLoad = decoded.split(',').map(item => {
+                        const [platform, name] = item.split(':');
+                        return { platform, name };
+                    });
+                } catch (e) {
+                    console.error("Invalid share link format.");
+                    streamsToLoad = JSON.parse(localStorage.getItem('msGrid_streams') || '[]');
+                }
+            } else {
+                streamsToLoad = JSON.parse(localStorage.getItem('msGrid_streams') || '[]');
+            }
+
             isGridMode = (localStorage.getItem('msGrid_mode') === 'true');
-            // Rebuild the UI without triggering individual layout updates
-            savedStreams.forEach(s => createStreamUI(s.name, s.platform, false));
-            // Run a single layout update at the end
+            streamsToLoad.forEach(s => createStreamUI(s.name, s.platform, false));
             setTimeout(updateLayout, 50);
         }
 
@@ -216,7 +271,6 @@
             const boxes = document.querySelectorAll('.stream-box');
             boxes.forEach((box, index) => {
                 const isFirst = index === 0;
-                // CRITICAL FIX: Ensure focused-stream class logic is solid
                 box.classList.toggle('focused-stream', !isGridMode && isFirst);
                 
                 const [platform, name] = box.id.replace('grid-', '').split('-');
