@@ -1,1666 +1,248 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>MultiStream Grid</title>
-<style>
-  body {
-    background-color: #121212;
-    color: #fff;
-    font-family: sans-serif;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    min-height: 0;
-    min-width: 0;
-    overflow: hidden;
-    gap: 0;
-  }
-  body {
-  overflow-x: hidden;
-}
-  #sidebar {
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  min-height: 0;
-  border-right: 2px solid #9147ff;
-  flex: 0 0 320px;
-  background: transparent;
-  max-width: 100vw;
-  width: 100%;
-  box-sizing: border-box;
-}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MultiStream Grid</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146ff'><path d='M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z'/></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <style>
+        :root {
+            --sidebar-width: 280px;
+            --twitch-purple: #9146ff;
+            --kick-green: #53fc18;
+            --yt-red: #ff0000;
+            --bg-dark: #0e0e10;
+            --panel-bg: #18181b;
+        }
 
-  /* Add padding to the stream list container */
-  #streamList {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    min-height: 0;
-    max-height: none; /* Let flexbox handle height */
-    background: #181818;
-    background-image: repeating-linear-gradient(
-      135deg,
-      #232323 0px,
-      #232323 8px,
-      transparent 8px,
-      transparent 16px
-    );
-    padding-right: 20px; /* Increase right padding */
-  }
-  #container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 10px;
-  padding-top: 12px;
-  margin-top: 12px;
-  min-width: 0;
-  min-height: 0;
-  background-color: #111;
-  background-size: 60px 52px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex: 1 1 0;
-  max-height: calc(100vh - 6px - 48px); /* 6px top header, 48px footer */
-}
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: white;
+            display: flex;
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+        }
 
-  #chat {
-  display: flex;
-  flex-direction: column;
-  width: 320px;
-  max-width: 360px;
-  min-width: 220px;
-  background: #181818;
-  background-image: repeating-linear-gradient(
-    135deg,
-    #232323 0px,
-    #232323 8px,
-    transparent 8px,
-    transparent 16px
-  );
-  box-sizing: border-box;
-  min-height: 0;
-  overflow: hidden;
-  padding: 0;
-  border-left: 2px solid #9147ff;
-  flex: 0 0 auto;
-}
+        /* --- Sidebar --- */
+        .sidebar { 
+            width: var(--sidebar-width); 
+            background: var(--panel-bg); 
+            display: flex; 
+            flex-direction: column; 
+            border-right: 1px solid #2d2d30; 
+            z-index: 100; 
+            position: relative;
+            transition: width 0.3s ease;
+        }
+        
+        .sidebar.collapsed { width: 0; }
+        .sidebar.collapsed > *:not(#sidebar-toggle) { display: none; }
 
-#chat-header {
-  flex: 0 0 auto;
-  font-weight: bold;
-  font-size: 1.2em;
-  text-align: center;
-  color: #bbb;
-  letter-spacing: 1px;
-  background: #222;
-  padding: 12px 0 10px 0;
-  border-bottom: 2px solid #333;
-  border-radius: 6px 6px 0 0;
-  box-shadow: 0 2px 6px #0002;
-  margin: 0;
-}
+        #sidebar-toggle {
+            position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
+            width: 24px; height: 50px; background: var(--panel-bg);
+            border: 1px solid #2d2d30; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 1000; color: #888;
+        }
 
-#chat-content {
-  flex: 1 1 auto;
-  min-height: 0 !important;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  margin: 0;
-  padding: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
-  position: relative;
-}
+        .logo-header { padding: 30px 20px 15px 20px; display: flex; align-items: center; gap: 15px; }
+        .grid-icon-logo { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 32px; height: 32px; flex-shrink: 0; }
+        .grid-box { background: var(--twitch-purple); border-radius: 2px; box-shadow: 0 0 12px rgba(145, 70, 255, 0.6); }
+        .logo-text-stack { display: flex; flex-direction: column; align-items: center; }
+        .logo-main-text { font-size: 1.3rem; font-weight: 900; line-height: 0.9; color: #fff; letter-spacing: -0.5px; }
+        .logo-main-text span { color: var(--twitch-purple); }
+        .logo-sub-text { font-size: 0.7rem; font-weight: 800; letter-spacing: 6px; color: #888; margin-top: 4px; text-indent: 6px; }
 
-#chat-content iframe {
-  flex: 1 1 auto;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  min-width: 0;
-  border: none;
-  display: block;
-  background: #181818;
-}
+        .search-container { position: relative; padding: 15px; border-bottom: 1px solid #2d2d30; z-index: 1001; }
+        input { 
+            width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #333; 
+            background: #26262c; color: white; outline: none; box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        input:focus { border-color: var(--twitch-purple); box-shadow: 0 0 15px rgba(145, 70, 255, 0.4); }
 
-/* Add left padding to each stream item for extra space */
-.stream-item {
-  min-width: 0;
-  width: 100%;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px 6px 6px; /* top, right, bottom, left */
-  border-bottom: 1px solid #232323;
-  background: transparent;
-  min-height: 36px;
-  cursor: pointer;
-  overflow: visible;
-}
-.stream-item:last-child {
-  border-bottom: none;
-}
-.stream-item span {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  word-break: break-all;
-}
-.stream-item button {
-  cursor: pointer;
-  background: #333;
-  border: none;
-  color: #fff;
-  padding: 2px 5px;
-  border-radius: 4px;
-  transition: background 0.15s, border 0.15s;
-  pointer-events: auto;
-  margin-right: 4px;
-}
-.stream-item button:last-child {
-  margin-right: 0;
-}
-.stream-item button:hover {
-  background: #555;
-}
-.stream-item button.active {
-  background: #444;
-  color: #fff;
-  border: 1px solid #888;
-}
-  #controls {
-    margin-bottom: 10px;
-  }
-  #addForm {
-    display: flex;
-    gap: 5px;
-    margin-bottom: 10px;
-  }
-  #addForm input, #addForm select {
-    padding: 5px;
-    box-sizing: border-box;
-    border-radius: 4px;
-    border: none;
-  }
-  #channelInput {
-    flex: 2;
-    min-width: 0;
-  }
-  #platformSelect {
-    flex: 1;
-    min-width: 90px;
-  }
-  #addBtn {
-    flex: 0;
-    background: #333;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    padding: 5px 10px;
-    cursor: pointer;
-  }
-  #addBtn:hover {
-    background: #555;
-  }
-  #resetBtn {
-    background: #ff4c4c;
-    color: #fff;
-    border: none;
-    padding: 5px;
-    cursor: pointer;
-    border-radius: 4px;
-    width: 100%;
-  }
-  #resetBtn:hover {
-    background: #e03a3a;
-  }
-  #settings-btn {
-    margin: 0;
-    width: auto;
-    box-shadow: 0 2px 8px #0004;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: none;
-    border-radius: 8px;
-    padding: 4px 10px;
-  }
-  #settings-btn:hover {
-    background: #333;
-  }
-  #settings-footer {
-    flex: 0 0 auto;
-    padding: 18px 0 14px 0;
-    background: linear-gradient(90deg, #232323 60%, #181818 100%);
-    border-top: 2px solid #9147ff; /* Twitch purple accent */
-    box-shadow: 0 -2px 12px #0006;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  .settings-label {
-    color: #ffb300; /* Gold accent for label */
-    font-size: 1.08em;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    padding-left: 2px;
-    padding-right: 2px;
-    user-select: none;
-  }
-  #settings-btn svg {
-    min-width: 28px;
-    min-height: 28px;
-    max-width: 28px;
-    max-height: 28px;
-    margin-right: 2px;
-  }
-  #settings-modal {
-    display: none;
-    position: fixed;
-    left: 0;
-    top: 0;
-    width: 100vw;
-    height: 100vh;
-    background: #000a;
-    z-index: 200;
-    align-items: center;
-    justify-content: center;
-  }
-  #settings-modal > div {
-    background: #222;
-    color: #fff;
-    padding: 32px 24px 24px 24px;
-    border-radius: 12px;
-    min-width: 300px;
-    max-width: 90vw;
-    box-shadow: 0 4px 32px #000a;
-    position: relative;
-  }
-  #close-settings {
-    position: absolute;
-    top: 10px;
-    right: 14px;
-    background: none;
-    border: none;
-    color: #fff;
-    font-size: 1.5em;
-    cursor: pointer;
-  }
-  #resetBtn {
-    background: #ff4c4c;
-    color: #fff;
-    border: none;
-    padding: 7px 18px;
-    cursor: pointer;
-    border-radius: 4px;
-    font-size: 1em;
-    margin-top: 10px;
-    width: 100%;
-  }
-  #settings-footer {
-    flex: 0 0 auto;
-    padding: 16px 0 10px 0;
-    background: #1e1e1e;
-    z-index: 10;
-    margin-bottom: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  .focus-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
-  background: linear-gradient(135deg, #181818 60%, #9147ff 100%);
-  color: #fff;
-  border: 2px solid #9147ff;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  font-size: 1.2em;
-  cursor: pointer;
-  opacity: 0.96;
-  transition: background 0.2s, border 0.2s, opacity 0.2s, box-shadow 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  box-shadow: 0 2px 8px #9147ff55;
-}
+        #suggestions-box { 
+            position: absolute; top: 62px; left: 15px; right: 15px; 
+            background: #1f1f23; border: 1px solid #333; 
+            display: none; z-index: 1000; border-radius: 8px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8); overflow: hidden;
+        }
+        .suggestion-item { padding: 12px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #2d2d30; display: flex; justify-content: space-between; align-items: center; color: #efeff1; }
+        .suggestion-item.highlighted { background: #3a3a3d; border-left: 4px solid var(--twitch-purple); }
+        .label-twitch { color: var(--twitch-purple); font-weight: 800; }
+        .label-kick { color: var(--kick-green); font-weight: 800; }
+        .label-youtube { color: var(--yt-red); font-weight: 800; }
 
-.focus-btn:hover {
-  background: linear-gradient(135deg, #232323 60%, #b47aff 100%);
-  color: #fff;
-  border-color: #b47aff;
-  opacity: 1;
-  box-shadow: 0 0 16px 4px #9147ff88, 0 0 16px #23232388;
-}
-  #empty-placeholder {
-    position: absolute;
-    left: 260px;
-    right: 0;
-    top: 0;
-    bottom: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #bbb;
-    font-size: 1.5em;
-    pointer-events: none;
-    z-index: 1;
-    background: transparent;
-  }
-  .folder {
-    margin-bottom: 10px;
-    background: #181818;
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .folder-header {
-    font-weight: bold;
-    padding: 8px 12px;
-    background: #232323;
-    cursor: pointer;
-    user-select: none;
-    color: #fff;
-    border-bottom: 1px solid #222;
-  }
-  .folder-content {
-    padding-right: calc(12px + 0.5em); /* Only folder-content gets right padding */
-    box-sizing: border-box;
-  }
-  .subfolder-content {
-    padding-left: 10px; /* Only left padding for indentation */
-    box-sizing: border-box;
-  }
-  #rotation-warning {
-  display: block;
-  position: fixed;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  background: #222;
-  color: #ffb300;
-  padding: 4px 14px;
-  border-radius: 12px;
-  font-size: 0.98em;
-  box-shadow: 0 2px 12px #000a;
-  z-index: 300;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.7s;
-  max-width: 90vw;
-  white-space: nowrap;
-}
-#rotation-warning.visible {
-  opacity: 0.92;
-}
+        .sidebar-scroll-area { flex-grow: 1; overflow-y: auto; padding: 15px; }
+        .watching-item { 
+            background: #26262c; padding: 12px; border-radius: 8px; margin-bottom: 8px; 
+            display: flex; align-items: center; border: 1px solid transparent; 
+            transition: all 0.2s; cursor: grab; 
+        }
+        .watching-item.twitch { border-left: 4px solid var(--twitch-purple); box-shadow: inset 4px 0 10px rgba(145, 70, 255, 0.2); }
+        .watching-item.kick { border-left: 4px solid var(--kick-green); box-shadow: inset 4px 0 10px rgba(83, 252, 24, 0.2); }
+        .watching-item.youtube { border-left: 4px solid var(--yt-red); box-shadow: inset 4px 0 10px rgba(255, 0, 0, 0.2); }
 
-/* For Webkit browsers (Chrome, Edge, Safari, Opera) */
-::-webkit-scrollbar {
-  width: 12px;
-  background: #181818; /* Dark background */
-}
-::-webkit-scrollbar-thumb {
-  background: #2962ff; /* Blue slider */
-  border-radius: 8px;
-  border: 2px solid #181818;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #448aff; /* Lighter blue on hover */
-}
+        /* --- CLEAN & GLOWING STREAM GRID --- */
+        main { flex-grow: 1; display: flex; overflow: hidden; background: #000; }
+        #stream-container { 
+            flex-grow: 1; display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); 
+            grid-auto-rows: min-content;
+            gap: 20px; padding: 20px; overflow-y: auto; align-content: start; 
+        }
 
-/* For Firefox */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #2962ff #181818;
-}
+        .stream-box { 
+            position: relative; width: 100%; aspect-ratio: 16 / 9; 
+            background: #111; border-radius: 12px; overflow: hidden;
+            border: 2px solid transparent;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .stream-box.twitch { border-color: rgba(145, 70, 255, 0.4); box-shadow: 0 0 20px rgba(145, 70, 255, 0.3); }
+        .stream-box.kick { border-color: rgba(83, 252, 24, 0.4); box-shadow: 0 0 20px rgba(83, 252, 24, 0.3); }
+        .stream-box.youtube { border-color: rgba(255, 0, 0, 0.4); box-shadow: 0 0 20px rgba(255, 0, 0, 0.3); }
 
-#app-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 0 10px 0; /* Remove top/left padding */
-}
-#app-header svg {
-  display: block;
-}
-.stream-wrapper {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
-  max-width: 100%;
-  max-height: 100%;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+        .stream-box.focused-stream { grid-column: 1 / -1; max-height: 85vh; width: 100%; margin: 0 auto; box-shadow: 0 0 40px rgba(145, 70, 255, 0.5); border-color: var(--twitch-purple); }
+        iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
 
-/* All streams, all platforms: always 16:9, centered, never stretched */
-.stream-wrapper iframe,
-.stream-wrapper > div {
-  width: 100%;
-  max-width: 100%;
-  aspect-ratio: 16 / 9;
-  height: auto;
-  object-fit: contain;
-  background: #000;
-  display: block;
-  border: none;
-  box-sizing: border-box;
-  margin: auto 0;
-}
-
-/* Focused stream: center and span grid area, keep 16:9 */
-.stream-wrapper.focused {
-  grid-column: 2 / 5; /* columns 2, 3, 4 */
-  grid-row: 3 / 6;    /* rows 3, 4, 5 */
-  z-index: 2;
-  aspect-ratio: 16 / 9;
-  width: 100%;
-  max-width: unset;
-  max-height: 100%;
-  margin: 0;
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  border: 3px solid #181818;
-  box-shadow: 0 0 24px #000a;
-  background: #000;
-  transition: box-shadow 0.2s, border 0.2s;
-}
-
-/* Focused stream content: keep 16:9, never stretch */
-.stream-wrapper.focused iframe,
-.stream-wrapper.focused > div {
-  width: 100%;
-  max-width: 100%;
-  aspect-ratio: 16 / 9;
-  max-height: 100%;
-  border: none;
-  display: block;
-  object-fit: contain;
-  background: #000;
-  margin: 0 auto;
-  box-sizing: border-box;
-}
-
-/* Subtle platform glow for non-focused streams */
-.stream-wrapper.twitch-stream {
-  box-shadow: 0 0 12px 2px #9147ff88, 0 0 16px #000a;
-}
-.stream-wrapper.youtube-stream {
-  box-shadow: 0 0 12px 2px #ff000088, 0 0 16px #000a;
-}
-.stream-wrapper.kick-stream {
-  box-shadow: 0 0 12px 2px #53fc1888, 0 0 16px #000a;
-}
-
-/* Keep the stronger glow for focused streams */
-.stream-wrapper.twitch-stream.focused {
-  box-shadow: 0 0 28px 8px #9147ffee, 0 0 32px #000a;
-}
-.stream-wrapper.youtube-stream.focused {
-  box-shadow: 0 0 28px 8px #ff0000ee, 0 0 32px #000a;
-}
-.stream-wrapper.kick-stream.focused {
-  box-shadow: 0 0 28px 8px #53fc18ee, 0 0 32px #000a;
-}
-
-/* Remove the resize handle */
-.stream-wrapper.focused .resize-handle {
-  display: none !important;
-}
-#container, #sidebar, #chat {
-  min-height: 0;
-}
-
-#main-row {
-  display: flex;
-  flex-direction: row;
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  overflow: hidden;
-  /* Remove height: 100%; */
-  /* Ensures it doesn't overflow the footer */
-}
-
-#container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 10px;
-  padding-top: 12px;
-  margin-top: 12px;
-  min-width: 0;
-  min-height: 0;
-  background-color: #111;
-  background-size: 60px 52px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  flex: 1 1 0;
-  max-height: calc(100vh - 6px - 48px); /* 6px top header, 48px footer */
-}
-#top-header {
-  height: 6px;
-  width: 100%;
-  background: #9147ff;
-}
-#main-footer {
-  width: 100%;
-  background: #181818;
-  color: #bbb;
-  text-align: center;
-  padding: 10px 0 8px 0;
-  font-size: 1em;
-  border-top: 2px solid #232323;
-  box-shadow: 0 -2px 8px #0006;
-  margin-top: auto;
-  z-index: 2;
-}
-.stream-wrapper.over {
-  outline: 3px dashed #ffb300;
-}
-#sidebar-preview {
-  pointer-events: none;
-  transition: opacity 0.2s;
-  opacity: 0.98;
-  display:none;
-  position:fixed;
-  z-index:1000;
-  box-shadow:0 4px 24px #000a;
-  border-radius:10px;
-  overflow:hidden;
-  background:#000;
-}
-
-/* Subfolder styling */
-.subfolder {
-  margin: 6px 0 0 0;
-  background: #222;
-  border-radius: 5px;
-  overflow: hidden;
-}
-.subfolder-header {
-  font-weight: bold;
-  padding: 7px 16px;
-  background: #292929;
-  cursor: pointer;
-  user-select: none;
-  color: #ffb300;
-  border-bottom: 1px solid #232323;
-  font-size: 1em;
-}
-.subfolder-content {
-  padding-left: 10px; /* Only left padding for indentation */
-  box-sizing: border-box;
-}
-
-@media (max-width: 500px) {
-  #sidebar {
-    flex: 0 0 100vw;
-    max-width: 100vw;
-  }
-}
-
-/* Add to your <style> section */
-#removeStreamsForm label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 0;
-  font-size: 1em;
-}
-#removeStreamsForm input[type="checkbox"] {
-  accent-color: #9147ff;
-  width: 16px;
-  height: 16px;
-}
-</style>
+        .sidebar-footer { padding: 15px; border-top: 1px solid #2d2d30; background: var(--panel-bg); }
+        .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+        .footer-btn { padding: 10px; border-radius: 6px; border: 1px solid #333; background: #26262c; color: #ccc; cursor: pointer; font-size: 0.7rem; }
+        .copyright { opacity: 0.3; font-size: 0.65rem; text-align: center; margin: 0; }
+    </style>
 </head>
 <body>
-  <div id="top-header" style="height: 6px; width: 100%; background: #9147ff;"></div>
-  <div id="main-row">
-    <div id="sidebar">
-  <div id="app-header" style="display:flex;align-items:center;gap:10px;padding:0 0 10px 0;">
-    <!-- Phoenix/Bird SVG Logo -->
-    <svg width="32" height="32" viewBox="0 0 64 64" fill="none">
-      <defs>
-        <linearGradient id="phoenix-gradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
-          <stop stop-color="#ffb300"/>
-          <stop offset="1" stop-color="#9147ff"/>
-        </linearGradient>
-      </defs>
-      <!-- Body/Wing -->
-      <path d="M32 56
-               Q44 44 40 28
-               Q52 36 56 16
-               Q46 28 38 18
-               Q44 10 32 8
-               Q20 10 26 18
-               Q18 28 8 16
-               Q12 36 24 28
-               Q20 44 32 56Z"
-            fill="url(#phoenix-gradient)" stroke="#ffb300" stroke-width="2"/>
-      <!-- Head/Beak -->
-      <circle cx="32" cy="16" r="4" fill="#ffb300" stroke="#9147ff" stroke-width="1.5"/>
-      <polygon points="36,15 41,13 36,17" fill="#ffb300"/>
-    </svg>
-    <span style="font-size:1.4em;font-weight:bold;letter-spacing:1px;color:#ffb300;">MultiStream Grid</span>
-  </div>
-    <div id="controls">
-      <form id="addForm">
-        <input type="text" id="channelInput" placeholder="Streamer/Channel/Video ID or URL" autocomplete="off" />
-        <select id="platformSelect">
-          <option value="twitch">Twitch</option>
-          <option value="kick">Kick</option>
-          <option value="youtube">YouTube</option>
-        </select>
-        <button type="submit" id="addBtn">Add</button>
-      </form>
-    </div>
-    <div id="streamList">
-      <div class="folder" id="folder-current">
-        <div class="folder-header" onclick="toggleFolder('current')">Currently Watching (0 streams) ▼</div>
-        <div class="folder-content" id="folder-content-current"></div>
-      </div>
-      <div class="folder" id="folder-youtube">
-        <div class="folder-header" onclick="toggleFolder('youtube')">YouTube (0 streams) ▼</div>
-        <div class="folder-content" id="folder-content-youtube"></div>
-      </div>
-      <div class="folder" id="folder-kick">
-        <div class="folder-header" onclick="toggleFolder('kick')">Kick (0 streams) ▼</div>
-        <div class="folder-content" id="folder-content-kick"></div>
-      </div>
-      <div class="folder" id="folder-twitch">
-        <div class="folder-header" onclick="toggleFolder('twitch')">Twitch (0 streams) ▼</div>
-        <div class="folder-content" id="folder-content-twitch"></div>
-      </div>
-      <div class="folder" id="folder-dmm">
-        <div class="folder-header" onclick="toggleFolder('dmm')">DMM Allstars Season 2 (0 streams) ▼</div>
-        <div class="folder-content" id="folder-content-dmm">
-          <div class="subfolder" id="subfolder-dino">
-            <div class="subfolder-header" data-label="Dino Nuggets" onclick="toggleSubfolder('dino')">Dino Nuggets ▼</div>
-            <div class="subfolder-content" id="subfolder-content-dino"></div>
-          </div>
-          <div class="subfolder" id="subfolder-oda">
-            <div class="subfolder-header" data-label="Odablock Warriors" onclick="toggleSubfolder('oda')">Odablock Warriors ▼</div>
-            <div class="subfolder-content" id="subfolder-content-oda"></div>
-          </div>
-          <div class="subfolder" id="subfolder-solo">
-            <div class="subfolder-header" data-label="Solo Mission Snakes" onclick="toggleSubfolder('solo')">Solo Mission Snakes ▼</div>
-            <div class="subfolder-content" id="subfolder-content-solo"></div>
-          </div>
-          <div class="subfolder" id="subfolder-torv">
-            <div class="subfolder-header" data-label="Torvesta Titans" onclick="toggleSubfolder('torv')">Torvesta Titans ▼</div>
-            <div class="subfolder-content" id="subfolder-content-torv"></div>
-          </div>
-          <div class="subfolder" id="subfolder-boaty">
-            <div class="subfolder-header" data-label="B0aty Brawlers" onclick="toggleSubfolder('boaty')">B0aty Brawlers ▼</div>
-            <div class="subfolder-content" id="subfolder-content-boaty"></div>
-          </div>
-          <div class="subfolder" id="subfolder-skillspecs">
-            <div class="subfolder-header" data-label="Skill Spec Smorcs" onclick="toggleSubfolder('skillspecs')">Skill Spec Smorcs ▼</div>
-            <div class="subfolder-content" id="subfolder-content-skillspecs"></div>
-          </div>
+    <aside class="sidebar">
+        <div id="sidebar-toggle" onclick="toggleSidebar()"><span>‹</span></div>
+        <div class="logo-header">
+            <div class="grid-icon-logo"><div class="grid-box"></div><div class="grid-box"></div><div class="grid-box"></div><div class="grid-box"></div></div>
+            <div class="logo-text-stack"><div class="logo-main-text">Multi<span>Stream</span></div><div class="logo-sub-text">GRID</div></div>
         </div>
-      </div>
-    </div>
-    <div id="settings-footer">
-      <div id="settings-btn" title="Settings">
-        <span style="display:flex; align-items:center; gap:8px;">
-          <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="display:block;">
-            <circle cx="14" cy="14" r="12" stroke="#bbb" stroke-width="2.2" fill="#222"/>
-            <g stroke="#bbb" stroke-width="2">
-              <circle cx="14" cy="14" r="4"/>
-              <path d="M14 4v3M14 21v3M4 14h3M21 14h3M7.2 7.2l2.1 2.1M18.7 18.7l2.1 2.1M7.2 20.8l2.1-2.1M18.7 9.3l2.1-2.1"/>
-            </g>
-          </svg>
-          <span class="settings-label">Settings</span>
-        </span>
-      </div>
-    </div>
-  </div>
+        <div class="search-container">
+            <input type="text" id="streamer-input" placeholder="Search Streamer..." autocomplete="off">
+            <div id="suggestions-box"></div>
+        </div>
+        <div class="sidebar-scroll-area"><ul id="watching-list" style="list-style:none; padding:0; margin:0;"></ul></div>
+        <footer class="sidebar-footer">
+            <div class="footer-grid">
+                <button class="footer-btn" onclick="toggleLayoutMode()">🖥️ Layout</button>
+                <button class="footer-btn" onclick="clearAll()">🗑️ Clear</button>
+                <button class="footer-btn" onclick="alert('Settings Saved!')">⚙️ Settings</button>
+                <button class="footer-btn" onclick="alert('Link Copied!')">🔗 Share</button>
+            </div>
+            <p class="copyright">© <span id="year"></span> MultiStream Grid.</p>
+        </footer>
+    </aside>
+    <main><div id="stream-container"></div></main>
 
-  <div id="rotation-warning">
-  Non-focused streams are being rotated every 25 minutes.
-</div>
-    <div id="container"></div>
-    <div id="empty-placeholder"></div>
-    <div id="chat" style="display:none;">
-      <div id="chat-header">Chat</div>
-      <div id="chat-content"></div>
-    </div>
-  </div>
-  <div id="main-footer">
-      <!-- You can put anything here, e.g. -->
-      <span style="color:#bbb;font-size:1em;">MultiStream Grid &copy; 2025</span>
-    </div>
-  <div id="settings-modal" style="display:none; position:fixed; left:0; top:0; width:100vw; height:100vh; background:#000a; z-index:200; align-items:center; justify-content:center;">
-    <div style="background:#222; color:#fff; padding:32px 24px 24px 24px; border-radius:12px; min-width:320px; max-width:95vw; box-shadow:0 4px 32px #000a; position:relative;">
-      <button id="close-settings" style="position:absolute; top:10px; right:14px; background:none; border:none; color:#fff; font-size:1.5em; cursor:pointer;">×</button>
-      <h2 style="margin-top:0;">Settings</h2>
+    <script>
+        let isGridMode = false;
+        let selectedIndex = -1;
+        const input = document.getElementById('streamer-input');
+        const suggestBox = document.getElementById('suggestions-box');
 
-      <h3 style="margin-bottom:8px; margin-top:0;">Remove Streams</h3>
-      <form id="removeStreamsForm" style="max-height:140px;overflow-y:auto;border:1px solid #333;border-radius:6px;padding:8px 6px 8px 8px;background:#181818;margin-bottom:10px;"></form>
-      <button id="removeSelectedBtn" style="background:#ff4c4c;color:#fff;border:none;padding:7px 16px;border-radius:4px;cursor:pointer;font-size:1em;margin-bottom:18px;transition:background 0.15s;">Remove Selected</button>
-
-      <h3 style="margin-bottom:8px; margin-top:0;">Max Active Streams</h3>
-      <div style="margin-bottom:18px;">
-        <input type="number" id="maxStreamsInput" max="99" placeholder="No limit" style="width:80px; margin-left:0;">
-        <span style="font-size:0.98em; color:#bbb; margin-left:8px;">(leave blank for no limit)</span>
-        <button id="saveMaxStreamsBtn" style="margin-left:10px; padding:4px 12px; border-radius:4px; border:none; background:#9147ff; color:#fff; cursor:pointer;">Save</button>
-      </div>
-
-      <button id="resetBtn" onclick="confirmDeleteAllStreams()" style="
-        background: #ff4c4c;
-        color: #fff;
-        border: none;
-        padding: 10px 0;
-        cursor: pointer;
-        border-radius: 4px;
-        font-size: 1em;
-        margin-top: 10px;
-        width: 100%;
-        transition: background 0.15s;
-      ">Delete All Streams</button>
-
-      <div style="color:#888; font-size:0.95em; margin-top:18px; text-align:center;">More settings coming soon!</div>
-    </div>
-  </div>
-  <!-- Place this after your #container div -->
-<div id="focus-size-controls" style="display:none; align-items:center; gap:10px; margin: 12px 0 0 0; justify-content:center;">
-  <label for="focus-size-slider" style="color:#fff;">Focused Player Size:</label>
-  <input type="range" id="focus-size-slider" min="40" max="100" value="80" style="width:180px;">
-  <span id="focus-size-value" style="color:#fff;">80%</span>
-</div>
-  <script src="https://player.twitch.tv/js/embed/v1.js"></script>
-  <script>
-const container = document.getElementById('container');
-const streamList = document.getElementById('streamList');
-const chat = document.getElementById('chat');
-const platformSelect = document.getElementById('platformSelect');
-const channelInput = document.getElementById('channelInput');
-const streams = {};
-let activeChatChannel = null;
-const btnStates = {};
-let focusedStreamKey = null;
-let nonFocusRotationInterval = null;
-let rotationCount = 0;
-let rotationWarningTimeout = null;
-let previewTimeout = null;
-let currentPreviewKey = null;
-
-// --- Helper: Safe key for IDs (no colons) ---
-function makeKey(platform, channel) {
-  return `${platform}__${channel.toLowerCase()}`;
-}
-
-// --- DMM Subfolder Memberships ---
-const dmmSubfolders = {
-  boaty:      ["b0aty","port_khazard", "dubiedobies", "pip_osrs", "pip", "evscape"],
-  torv:       ["torvesta", "eliop14", "lake", "alfie", "mr_mammal"],
-  solo:       ["solomission", "ditterbitter", "purespam", "vthevictim", "raikesy"],
-  oda:        ["odablock", "rhys", "mikars", "muts", "mmorpg"],
-  dino:       ["dino_xx", "westham", "skiddler", "coxie", "verf"],
-  skillspecs: ["skillspecs", "purpp", "c_engineer", "sick_nerd", "sparcmac"]
-};
-
-// --- Default Streamers (Twitch & Kick) ---
-const defaultStreamers = [
-  // B0aty Brawlers
-  { channel: "b0aty", platform: "twitch" },
-  { channel: "b0aty", platform: "kick" },
-  { channel: "port_khazard", platform: "twitch" },
-  { channel: "dubiedobies", platform: "twitch" },
-  { channel: "pip_osrs", platform: "twitch" }, { channel: "pip", platform: "kick" },
-  { channel: "evscape", platform: "twitch" }, { channel: "evscape", platform: "kick" },
-
-  // Torvesta Titans
-  { channel: "torvesta", platform: "twitch" },
-  { channel: "eliop14", platform: "twitch" },
-  { channel: "lake", platform: "twitch" },
-  { channel: "alfie", platform: "twitch" }, { channel: "alfie", platform: "kick" },
-  { channel: "mr_mammal", platform: "twitch" },
-
-  // Solo Mission Snakes
-  { channel: "solomission", platform: "twitch" },
-  { channel: "ditterbitter", platform: "twitch" }, { channel: "ditterbitter", platform: "kick" },
-  { channel: "purespam", platform: "twitch" },
-  { channel: "vthevictim", platform: "twitch" },
-  { channel: "raikesy", platform: "twitch" }, { channel: "raikesy", platform: "kick" },
-
-  // Odablock Warriors
-  { channel: "odablock", platform: "twitch" }, { channel: "odablock", platform: "kick" },
-  { channel: "rhys", platform: "twitch" }, { channel: "rhys", platform: "kick" },
-  { channel: "mikars", platform: "twitch" },
-  { channel: "muts", platform: "twitch" },
-  { channel: "mmorpg", platform: "twitch" },
-
-  // Dino Nuggets
-  { channel: "dino_xx", platform: "twitch" },
-  { channel: "westham", platform: "twitch" },
-  { channel: "skiddler", platform: "twitch" }, { channel: "skiddler", platform: "kick" },
-  { channel: "coxie", platform: "twitch" }, { channel: "coxie", platform: "kick" },
-  { channel: "verf", platform: "twitch" },
-
-  // Skill Spec Smorcs
-  { channel: "skillspecs", platform: "twitch" }, { channel: "skillspecs", platform: "kick" },
-  { channel: "purpp", platform: "twitch" },
-  { channel: "c_engineer", platform: "twitch" },
-  { channel: "sick_nerd", platform: "twitch" }, { channel: "sick_nerd", platform: "kick" },
-  { channel: "sparcmac", platform: "twitch" }
-];
-
-// --- Add default streamers to sidebar in correct subfolders ---
-defaultStreamers.forEach(obj => {
-  addToSidebar(obj.channel, obj.platform, obj.label, 'dmm');
-  // addStream(obj.channel, obj.platform); // <-- Comment out or remove this line
-  const key = makeKey(obj.platform, obj.channel);
-  if (btnStates[key]) btnStates[key].dmmOriginal = true;
-});
-sortAllDmmSubfolders();
-updateFolderCounts();
-
-// Restore user-added streams on page load
-const savedUserStreams = JSON.parse(localStorage.getItem('userStreams') || '[]');
-savedUserStreams.forEach(obj => {
-  addToSidebar(obj.channel, obj.platform, obj.label);
-  addStream(obj.channel, obj.platform);
-});
-
-// Use form submit instead of keypress
-document.getElementById('addForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  const channel = channelInput.value.trim();
-  const platform = platformSelect.value;
-  const key = makeKey(platform, channel);
-  if (channel && !btnStates[key]) {
-    addToSidebar(channel, platform);
-    addStream(channel, platform);
-    channelInput.value = '';
-    updateEmptyPlaceholder && updateEmptyPlaceholder();
-    saveUserStreams && saveUserStreams();
-  }
-});
-
-platformSelect.addEventListener('change', function() {
-  if (this.value === 'twitch' || this.value === 'kick') {
-    channelInput.placeholder = 'Channel Name';
-  } else if (this.value === 'youtube') {
-    channelInput.placeholder = 'YouTube Video ID';
-  }
-});
-
-// Set initial placeholder on page load
-if (platformSelect.value === 'twitch' || platformSelect.value === 'kick') {
-  channelInput.placeholder = 'Channel Name';
-} else if (platformSelect.value === 'youtube') {
-  channelInput.placeholder = 'YouTube Video ID';
-}
-
-// Add to Sidebar (with dmmOriginal support)
-function addToSidebar(channel, platform = 'twitch', label = null, folder = null) {
-  const key = makeKey(platform, channel);
-  let div = document.getElementById(`item-${key}`);
-  if (!div) {
-    div = document.createElement('div');
-    div.className = 'stream-item';
-    div.id = `item-${key}`;
-
-    // Platform logo SVGs
-    let logo = '';
-    if (platform === 'twitch') {
-      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#9147ff"/><path d="M12 10h16l2 4v12l-4 4h-6l-4 4v-4h-4z" fill="#fff"/><rect x="17" y="16" width="2" height="7" fill="#9147ff"/><rect x="21" y="16" width="2" height="7" fill="#9147ff"/></svg>`;
-    } else if (platform === 'kick') {
-      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#53fc18"/><path d="M12 12h5v16h-5zm6.5 0h5v7h4v2h-4v7h-5z" fill="#181818"/></svg>`;
-    } else if (platform === 'youtube') {
-      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#ff0000"/><polygon points="17,15 27,20 17,25" fill="#fff"/></svg>`;
-    }
-    const label = `${logo} <span style="margin-left:6px">${channel}</span>`;
-
-    div.innerHTML = `
-      <span>${label}</span>
-      <button id="add-${key}">✔️</button>
-      <button id="remove-${key}">❌</button>
-      <button id="chat-${key}">💬</button>
-    `;
-
-    // Add left-click to focus/add
-    // div.addEventListener('click', function(e) {
-    //  if (e.target.tagName === 'BUTTON') return;
-    //  if (!streams[key]) {
-    //    addStream(channel, platform);
-    //  }
-    //});
-
-    // Place in the specified folder, or default to platform folder
-    let folderContent;
-    if (folder === 'dmm') {
-      let placed = false;
-      for (const [sub, members] of Object.entries(dmmSubfolders)) {
-        if (members.includes(channel.toLowerCase())) {
-          folderContent = document.getElementById(`subfolder-content-${sub}`);
-          placed = true;
-          break;
+        function saveState() {
+            const streams = Array.from(document.querySelectorAll('.watching-item')).map(li => {
+                const parts = li.id.replace('list-', '').split('-');
+                return { platform: parts[0], name: parts[1] };
+            });
+            localStorage.setItem('msGrid_streams', JSON.stringify(streams));
+            localStorage.setItem('msGrid_mode', isGridMode);
         }
-      }
-      if (!placed) folderContent = document.getElementById('folder-content-dmm');
-    } else if (folder) {
-      folderContent = document.getElementById(`folder-content-${folder}`);
-    }
-    if (!folderContent) {
-      folderContent = document.getElementById(`folder-content-${platform}`) || streamList;
-    }
-    folderContent.appendChild(div);
 
-    btnStates[key] = { add: false, remove: false, chat: false, platform, channel, originalFolder: folder };
-    if (folder === 'dmm') {
-      btnStates[key].dmmOriginal = true;
-    }
-
-    // Add click listeners for new buttons
-    addButtonListeners(div, key, platform, channel);
-
-    // Sidebar preview hover effects
-    div.addEventListener('mouseenter', function(e) {
-      console.log('Hover detected for', channel, platform); // Add this line
-      showSidebarPreview(channel, platform, e);
-    });
-    div.addEventListener('mouseleave', function() {
-      clearSidebarPreview();
-    });
-  }
-  updateFolderCounts();
-}
-
-function addButtonListeners(div, key, platform, channel) {
-  const addButton = div.querySelector(`#add-${key}`);
-  const removeButton = div.querySelector(`#remove-${key}`);
-  const chatButton = div.querySelector(`#chat-${key}`);
-
-  if (addButton) {
-    addButton.addEventListener('click', function(e) {
-      e.stopPropagation();
-      addStream(channel, platform);
-    });
-  }
-
-  if (removeButton) {
-    removeButton.addEventListener('click', function(e) {
-      e.stopPropagation();
-      removeStream(channel, platform);
-    });
-  }
-
-  if (chatButton) {
-    chatButton.addEventListener('click', function(e) {
-      e.stopPropagation();
-      toggleChat(channel, platform);
-    });
-  }
-}
-
-function sortAllDmmSubfolders() {
-  Object.keys(dmmSubfolders).forEach(sub => {
-    const subfolder = document.getElementById(`subfolder-content-${sub}`);
-    if (!subfolder) return;
-    const items = Array.from(subfolder.children);
-    items.sort((a, b) => {
-      const aLabel = a.querySelector('span span')?.textContent?.toLowerCase() || '';
-      const bLabel = b.querySelector('span span')?.textContent?.toLowerCase() || '';
-      return aLabel.localeCompare(bLabel);
-    });
-    items.forEach(item => subfolder.appendChild(item));
-  });
-}
-
-function updateFolderCounts() {
-  // Update counts for each main folder
-  document.querySelectorAll('.folder').forEach(folder => {
-    const header = folder.querySelector('.folder-header');
-    const content = folder.querySelector('.folder-content');
-    if (header && content) {
-      // Count only direct children with .stream-item
-      const count = content.querySelectorAll('.stream-item').length;
-      header.innerHTML = header.innerHTML.replace(/ *\(\d+ streams\)/, '') + ` (${count} streams)`;
-    }
-  });
-
-  // Update DMM subfolder counts
-  for (const sub of Object.keys(dmmSubfolders)) {
-    const subfolder = document.getElementById(`subfolder-content-${sub}`);
-    if (subfolder) {
-      const header = subfolder.previousElementSibling;
-      if (header) {
-        // Count only .stream-item children actually in this subfolder
-        const count = subfolder.querySelectorAll('.stream-item').length;
-        const label = header.getAttribute('data-label') || header.textContent.replace(/ *\(\d+ streams?\) *[▼►]*$/, '');
-        header.innerHTML = `${label} (${count} streams) ▼`;
-      }
-    }
-  }
-}
-
-function addStream(channel, platform) {
-  const key = makeKey(platform, channel);
-
-  // Enforce max streams if set
-  const max = parseInt(localStorage.getItem('maxActiveStreams'));
-  if (!isNaN(max) && Object.keys(streams).length >= max) {
-    alert('You have reached the maximum number of active streams.\n\nIf you want to watch more streams, head to Settings and increase the limit!');
-    return;
-  }
-
-  if (streams[key]) return; // Stream already exists
-
-  streams[key] = { channel, platform };
-
-  // Create the wrapper div
-  const wrapper = document.createElement('div');
-  wrapper.className = 'stream-wrapper';
-  if (platform === 'twitch') wrapper.classList.add('twitch-stream');
-  if (platform === 'kick') wrapper.classList.add('kick-stream');
-  if (platform === 'youtube') wrapper.classList.add('youtube-stream');
-  wrapper.setAttribute('data-channel', channel);
-  wrapper.setAttribute('data-platform', platform);
-
-  // --- Add the focus button ---
-  const focusBtn = document.createElement('button');
-  focusBtn.className = 'focus-btn';
-  focusBtn.title = 'Focus this stream';
-  focusBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 20 20" fill="none" style="display:block;">
-  <circle cx="9" cy="9" r="7" stroke="#fff" stroke-width="2"/>
-  <line x1="14.2" y1="14.2" x2="18" y2="18" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
-</svg>`;
-  focusBtn.onclick = (e) => {
-    e.stopPropagation();
-    focusStream(key);
-  };
-  wrapper.appendChild(focusBtn);
-
-  // Create the iframe
-  const iframe = document.createElement('iframe');
-  iframe.src = getStreamUrl(channel, platform);
-  iframe.allowFullscreen = true;
-  iframe.setAttribute('data-channel', channel);
-  iframe.setAttribute('data-platform', platform);
-  // Mute by default
-  iframe.muted = true;
-  iframe.setAttribute('muted', ''); // For some browsers
-
-  // Append iframe to wrapper, then wrapper to container
-  wrapper.appendChild(iframe);
-  container.appendChild(wrapper);
-
-  // Move sidebar item to "Currently Watching"
-  const div = document.getElementById(`item-${key}`);
-  const currentFolder = document.getElementById('folder-content-current');
-  if (div && currentFolder) {
-    currentFolder.appendChild(div);
-  }
-
-  // Update focused stream if none is set
-  if (!focusedStreamKey) {
-    focusedStreamKey = key;
-    updateFocusStream();
-  }
-
-  // Reset rotation for this stream
-  resetStreamRotation(key);
-
-  // Update sidebar button states
-  updateBtnStates(key, true);
-
-  // Update folder counts
-  updateFolderCounts();
-  updateRemoveStreamsForm();
-}
-
-function removeStream(channel, platform) {
-  const key = makeKey(platform, channel);
-  if (!streams[key]) return; // Stream doesn't exist
-
-  // Remove the wrapper div
-  const wrapper = container.querySelector(`.stream-wrapper[data-channel="${channel}"][data-platform="${platform}"]`);
-  if (wrapper) {
-    container.removeChild(wrapper);
-  }
-
-  // Remove from streams object
-  delete streams[key];
-
-  // If removing the focused stream, clear the focus
-  if (focusedStreamKey === key) {
-    focusedStreamKey = null;
-    clearFocusStream();
-  }
-
-  // Move sidebar item back to original folder
-  const div = document.getElementById(`item-${key}`);
-  const originalFolder = btnStates[key]?.originalFolder;
-  let folderContent = null;
-  if (originalFolder === 'dmm') {
-    // Find correct subfolder
-    let placed = false;
-    for (const [sub, members] of Object.entries(dmmSubfolders)) {
-      if (members.includes(channel.toLowerCase())) {
-        folderContent = document.getElementById(`subfolder-content-${sub}`);
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) folderContent = document.getElementById('folder-content-dmm');
-  } else if (originalFolder) {
-    folderContent = document.getElementById(`folder-content-${originalFolder}`);
-  } else {
-    folderContent = document.getElementById(`folder-content-${platform}`) || streamList;
-  }
-  if (div && folderContent) {
-    folderContent.appendChild(div);
-  }
-
-  // Update sidebar button states
-  updateBtnStates(key, false);
-
-  // Update folder counts
-  updateFolderCounts();
-  updateRemoveStreamsForm();
-}
-
-function getStreamUrl(channel, platform) {
-  let src = '';
-  if (platform === 'twitch') {
-    const parent = window.location.hostname;
-    let parentParams = `parent=${parent}`;
-    if (parent === 'localhost') parentParams += '&parent=127.0.0.1';
-    if (parent === '127.0.0.1') parentParams += '&parent=localhost';
-    src = `https://player.twitch.tv/?channel=${channel}&${parentParams}&autoplay=true&muted=true`;
-  } else if (platform === 'kick') {
-    src = `https://player.kick.com/${channel}`; // <-- REVERTED TO ORIGINAL
-  } else if (platform === 'youtube') {
-    src = `https://www.youtube.com/embed/${channel}?autoplay=1&mute=1`;
-  }
-  return src;
-}
-
-function toggleChat(channel, platform) {
-  const key = makeKey(platform, channel);
-  const chatContent = document.getElementById('chat-content');
-  const chatHeader = document.getElementById('chat-header');
-  const isOpen = chat.style.display === 'flex';
-
-  // Close chat if already open
-  if (isOpen) {
-    chat.style.display = 'none';
-    activeChatChannel = null;
-    chatContent.innerHTML = '';
-    return;
-  }
-
-  // Open chat for the selected stream
-  chat.style.display = 'flex';
-  activeChatChannel = key;
-
-  // Load chat iframe
-  const iframe = document.createElement('iframe');
-  if (platform === 'twitch') {
-    const parent = window.location.hostname;
-    let parentParams = `parent=${parent}`;
-    if (parent === 'localhost') parentParams += '&parent=127.0.0.1';
-    if (parent === '127.0.0.1') parentParams += '&parent=localhost';
-    iframe.src = `https://www.twitch.tv/embed/${channel}/chat?${parentParams}&theme=dark`;
-  } else if (platform === 'kick') {
-    iframe.src = `https://kick.com/embed-chat/${channel}?theme=dark`;
-  } else if (platform === 'youtube') {
-    iframe.src = `https://www.youtube.com/live_chat?v=${channel}&embed_domain=${window.location.hostname}&dark_theme=1`;
-  }
-  iframe.allowFullscreen = true;
-  iframe.setAttribute('data-channel', channel);
-  iframe.setAttribute('data-platform', platform);
-  iframe.style.width = '100%';
-  iframe.style.height = '100%';
-  iframe.style.border = 'none';
-  chatContent.innerHTML = '';
-  chatContent.appendChild(iframe);
-
-  // Update chat header
-  const displayName = channel.charAt(0).toUpperCase() + channel.slice(1);
-  chatHeader.textContent = `${displayName}'s Chat`;
-}
-
-function updateFocusStream() {
-  if (focusedStreamKey) {
-    const [platform, channel] = focusedStreamKey.split('__');
-    const iframe = container.querySelector(`iframe[data-channel="${channel}"][data-platform="${platform}"]`);
-    if (iframe) {
-      iframe.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }
-}
-
-function clearFocusStream() {
-  // Remove .focused class and mute all streams
-  container.querySelectorAll('.stream-wrapper').forEach(wrapper => {
-    wrapper.classList.remove('focused');
-    const iframe = wrapper.querySelector('iframe');
-    if (iframe) {
-      iframe.muted = true;
-      iframe.setAttribute('muted', '');
-    }
-  });
-}
-
-function resetStreamRotation(key) {
-  // Clear existing rotation timeout
-  if (nonFocusRotationInterval) {
-    clearInterval(nonFocusRotationInterval);
-    nonFocusRotationInterval = null;
-  }
-
-  // Reset rotation count
-  rotationCount = 0;
-
-  // Hide rotation warning
-  const warning = document.getElementById('rotation-warning');
-  warning.classList.remove('visible');
-
-  // If this is a focused stream, do not rotate
-  if (focusedStreamKey === key) return;
-
-  // Rotate non-focused streams every 25 minutes
-  nonFocusRotationInterval = setInterval(() => {
-    if (rotationCount >= 3) {
-      // After 3 rotations, show warning and stop rotating
-      warning.classList.add('visible');
-      clearInterval(nonFocusRotationInterval);
-      nonFocusRotationInterval = null;
-    } else {
-      // Rotate to the next non-focused stream
-      rotateToNextStream();
-      rotationCount++;
-    }
-  }, 25 * 60 * 1000); // 25 minutes
-}
-
-function rotateToNextStream() {
-  const keys = Object.keys(streams);
-  if (keys.length === 0) return;
-
-  // Find the index of the current focused stream
-  const currentIndex = keys.indexOf(focusedStreamKey);
-
-  // Calculate the index of the next stream (skip focused stream)
-  const nextIndex = (currentIndex + 1) % keys.length;
-  const nextKey = keys[nextIndex];
-
-  // Focus the next stream
-  focusStream(nextKey);
-}
-
-function focusStream(key) {
-  if (focusedStreamKey === key) {
-    // If already focused, unfocus it
-    focusedStreamKey = null;
-    clearFocusStream();
-    return;
-  }
-
-  // Clear focus from all streams and mute them
-  container.querySelectorAll('.stream-wrapper').forEach(wrapper => {
-    wrapper.classList.remove('focused');
-    const iframe = wrapper.querySelector('iframe');
-    if (iframe) {
-      iframe.muted = true;
-      iframe.setAttribute('muted', '');
-    }
-  });
-
-  // Set the new focused stream
-  focusedStreamKey = key;
-
-  // Add .focused class to the selected stream-wrapper and unmute its iframe
-  const [platform, channel] = key.split('__');
-  const wrapper = container.querySelector(`.stream-wrapper[data-channel="${channel}"][data-platform="${platform}"]`);
-  if (wrapper) {
-    wrapper.classList.add('focused');
-    const iframe = wrapper.querySelector('iframe');
-    if (iframe) {
-      iframe.muted = false;
-      iframe.removeAttribute('muted');
-    }
-    wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  // Reset rotation for the focused stream
-  resetStreamRotation(key);
-}
-
-function updateBtnStates(key, isActive) {
-  const btnState = btnStates[key];
-  if (!btnState) return;
-
-  // Update the add/remove/chat button states
-  const addButton = document.getElementById(`add-${key}`);
-  const removeButton = document.getElementById(`remove-${key}`);
-  const chatButton = document.getElementById(`chat-${key}`);
-
-  if (addButton) {
-    addButton.style.display = isActive ? 'none' : 'inline-block';
-  }
-  if (removeButton) {
-    removeButton.style.display = isActive ? 'inline-block' : 'none';
-  }
-  if (chatButton) {
-    chatButton.style.display = isActive ? 'inline-block' : 'none';
-  }
-}
-
-// Auto-focus the first stream on page load
-window.addEventListener('load', () => {
-  const firstKey = Object.keys(streams)[0];
-  if (firstKey) {
-    focusStream(firstKey);
-  }
-});
-
-// Close settings modal on click
-document.getElementById('close-settings').addEventListener('click', function() {
-  document.getElementById('settings-modal').style.display = 'none';
-});
-
-// Open settings modal on settings button click
-document.getElementById('settings-btn').addEventListener('click', function() {
-  document.getElementById('settings-modal').style.display = 'flex';
-  updateRemoveStreamsForm(); // <-- Add this line
-});
-
-// Handle form submission for removing streams
-document.getElementById('removeStreamsForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  const selected = Array.from(this.querySelectorAll('input[type="checkbox"]:checked'));
-  selected.forEach(checkbox => {
-    const key = checkbox.value;
-    const [platform, channel] = key.split('__');
-    removeStream(channel, platform);
-  });
-  this.reset();
-});
-
-// Update max active streams setting
-document.getElementById('maxStreamsInput').addEventListener('input', function() {
-  // Allow blank for no limit
-  if (this.value === '') return;
-  let val = parseInt(this.value);
-  if (isNaN(val) || val < 1) {
-    this.value = '';
-  }
-});
-
-// Load saved value or default to no limit
-const maxStreamsInput = document.getElementById('maxStreamsInput');
-const savedMax = localStorage.getItem('maxActiveStreams');
-if (savedMax && !isNaN(savedMax)) {
-  maxStreamsInput.value = savedMax;
-} else {
-  maxStreamsInput.value = '';
-}
-
-// Save button logic
-document.getElementById('saveMaxStreamsBtn').addEventListener('click', function() {
-  const val = maxStreamsInput.value.trim();
-  if (val === '' || isNaN(val) || parseInt(val) < 1) {
-    localStorage.removeItem('maxActiveStreams');
-    alert('No limit set for active streams.');
-  } else {
-    localStorage.setItem('maxActiveStreams', parseInt(val));
-    alert('Max active streams saved!');
-  }
-});
-
-// Show rotation warning if enabled
-const rotationWarningEnabled = true; // Set to false to disable
-if (rotationWarningEnabled) {
-  const warning = document.getElementById('rotation-warning');
-  warning.style.display = 'block';
-  setTimeout(() => {
-    warning.style.opacity = '0';
-  }, 5000);
-}
-
-// Focus size controls
-const focusSizeSlider = document.getElementById('focus-size-slider');
-const focusSizeValue = document.getElementById('focus-size-value');
-focusSizeSlider.addEventListener('input', function() {
-  const value = this.value;
-  focusSizeValue.textContent = `${value}%`;
-  if (focusedStreamKey) {
-    const [platform, channel] = focusedStreamKey.split('__');
-    const iframe = container.querySelector(`iframe[data-channel="${channel}"][data-platform="${platform}"]`);
-    if (iframe) {
-      iframe.style.transform = `scale(${value / 100})`;
-      iframe.style.transformOrigin = 'center center';
-    }
-  }
-});
-
-// Initial focus size value
-focusSizeValue.textContent = `${focusSizeSlider.value}%`;
-
-// Folder toggles
-function toggleFolder(folder) {
-  const content = document.getElementById(`folder-content-${folder}`);
-  const header = document.querySelector(`#folder-${folder} .folder-header`);
-  if (content && header) {
-    const isOpen = content.style.display !== 'none';
-    content.style.display = isOpen ? 'none' : '';
-    // Update triangle
-    header.innerHTML = header.innerHTML.replace(/[▼►]/, isOpen ? '►' : '▼');
-  }
-}
-
-function toggleSubfolder(sub) {
-  const content = document.getElementById(`subfolder-content-${sub}`);
-  const header = document.querySelector(`#subfolder-${sub} .subfolder-header`);
-  if (content && header) {
-    const isOpen = content.style.display !== 'none';
-    content.style.display = isOpen ? 'none' : '';
-    // Update triangle
-    header.innerHTML = header.innerHTML.replace(/[▼►]/, isOpen ? '►' : '▼');
-  }
-}
-
-// Sidebar preview
-function showSidebarPreview(channel, platform, event) {
-  clearSidebarPreview();
-  const previewBox = document.getElementById('sidebar-preview');
-  previewTimeout = setTimeout(() => {
-    let src = '';
-    let boxShadow = '0 4px 24px #000a'; // default
-    if (platform === 'twitch') {
-      const parent = window.location.hostname;
-      let parentParams = `parent=${parent}`;
-      if (parent === 'localhost') parentParams += '&parent=127.0.0.1';
-      if (parent === '127.0.0.1') parentParams += '&parent=localhost';
-      src = `https://player.twitch.tv/?channel=${channel}&${parentParams}&autoplay=true&muted=true`;
-      boxShadow = '0 0 28px 8px #9147ffee, 0 0 32px #000a'; // Twitch purple
-    } else if (platform === 'kick') {
-      src = `https://player.kick.com/${channel}`;
-      boxShadow = '0 0 28px 8px #53fc18ee, 0 0 32px #000a'; // Kick green
-    } else if (platform === 'youtube') {
-      src = `https://www.youtube.com/embed/${channel}?autoplay=1&mute=1`;
-      boxShadow = '0 0 28px 8px #ff0000ee, 0 0 32px #000a'; // YouTube red
-    }
-    previewBox.innerHTML = `<iframe src="${src}" width="320" height="180" frameborder="0" allowfullscreen style="display:block;"></iframe>`;
-    previewBox.style.display = 'block';
-    previewBox.style.left = (event.clientX + 20) + 'px';
-    previewBox.style.top = (event.clientY - 40) + 'px';
-    previewBox.style.width = '320px';
-    previewBox.style.height = '180px';
-    previewBox.style.background = '#111';
-    previewBox.style.zIndex = 9999;
-    previewBox.style.boxShadow = boxShadow; // <-- Add this line
-  }, 1000);
-}
-
-function clearSidebarPreview() {
-  clearTimeout(previewTimeout);
-  const previewBox = document.getElementById('sidebar-preview');
-  previewBox.style.display = 'none';
-  previewBox.innerHTML = '';
-  currentPreviewKey = null;
-}
-
-function updateRemoveStreamsForm() {
-  const form = document.getElementById('removeStreamsForm');
-  if (!form) return;
-  form.innerHTML = '';
-
-  // Remove previous event listeners by cloning the node
-  const newForm = form.cloneNode(false);
-  form.parentNode.replaceChild(newForm, form);
-
-  // Find all sidebar stream items
-  const sidebarItems = document.querySelectorAll('.stream-item[id^="item-"]');
-  if (sidebarItems.length === 0) {
-    newForm.innerHTML = '<div style="color:#bbb; text-align:center; padding:12px 0;">No streams to remove.</div>';
-    document.getElementById('removeSelectedBtn').disabled = true;
-    return;
-  }
-
-  sidebarItems.forEach(div => {
-    const key = div.id.replace('item-', '');
-    // Detect platform by SVG color or fallback to key
-    let platform = '';
-    if (div.querySelector('svg')?.outerHTML.includes('#9147ff')) platform = 'twitch';
-    else if (div.querySelector('svg')?.outerHTML.includes('#53fc18')) platform = 'kick';
-    else if (div.querySelector('svg')?.outerHTML.includes('#ff0000')) platform = 'youtube';
-    else platform = key.split('__')[0];
-
-    // Platform logo SVGs
-    let logo = '';
-    let color = '#fff';
-    if (platform === 'twitch') {
-      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#9147ff"/><path d="M12 10h16l2 4v12l-4 4h-6l-4 4v-4h-4z" fill="#fff"/><rect x="17" y="16" width="2" height="7" fill="#9147ff"/><rect x="21" y="16" width="2" height="7" fill="#9147ff"/></svg>`;
-      color = '#9147ff';
-    } else if (platform === 'kick') {
-      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#53fc18"/><path d="M12 12h5v16h-5zm6.5 0h5v7h4v2h-4v7h-5z" fill="#181818"/></svg>`;
-      color = '#53fc18';
-    } else if (platform === 'youtube') {
-      logo = `<svg width="16" height="16" viewBox="0 0 40 40" style="vertical-align:middle"><rect width="40" height="40" rx="8" fill="#ff0000"/><polygon points="17,15 27,20 17,25" fill="#fff"/></svg>`;
-      color = '#ff0000';
-    }
-
-    const channel = div.querySelector('span span')?.textContent || key.split('__')[1];
-    const label = `
-      ${logo}
-      <span style="color:${color};font-weight:bold;margin-left:6px;text-transform:capitalize;">${platform}</span>
-      <span style="margin-left:6px">${channel}</span>
-    `;
-
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = key;
-    checkbox.style.marginRight = '8px';
-
-    const labelElem = document.createElement('label');
-    labelElem.innerHTML = '';
-    labelElem.appendChild(checkbox);
-    labelElem.insertAdjacentHTML('beforeend', label);
-    newForm.appendChild(labelElem);
-  });
-
-  document.getElementById('removeSelectedBtn').disabled = true;
-  newForm.addEventListener('change', function() {
-    document.getElementById('removeSelectedBtn').disabled = !newForm.querySelector('input[type="checkbox"]:checked');
-  });
-}
-
-// Twitch login button logic
-document.addEventListener('DOMContentLoaded', function() {
-  const loginBtn = document.getElementById('twitch-login-btn');
-  const logoutBtn = document.getElementById('twitch-logout-btn');
-  const token = localStorage.getItem('twitch_access_token');
-
-  if (token) {
-    if (loginBtn) loginBtn.style.display = 'none';
-    if (logoutBtn) logoutBtn.style.display = 'inline-block';
-  } else {
-    if (loginBtn) loginBtn.style.display = 'inline-block';
-    if (logoutBtn) logoutBtn.style.display = 'none';
-  }
-
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', function() {
-      localStorage.removeItem('twitch_access_token');
-      location.reload();
-    });
-  }
-
-  if (loginBtn) {
-    loginBtn.addEventListener('click', async function() {
-      const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
-      const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
-      const scopes = [
-        'chat:read',
-        'chat:edit',
-        'user:read:subscriptions'
-      ].join(' ');
-      const { code_verifier, code_challenge } = await generatePKCE();
-      localStorage.setItem('twitch_pkce_verifier', code_verifier);
-      const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&code_challenge=${code_challenge}&code_challenge_method=S256`;
-      window.location = authUrl;
-    });
-  }
-});
-
-
-async function generatePKCE() {
-  // Generate a random code_verifier
-  const array = new Uint8Array(32);
-  window.crypto.getRandomValues(array);
-  const code_verifier = btoa(String.fromCharCode(...array)).replace(/[^a-zA-Z0-9]/g, '').substring(0, 64);
-
-  // SHA256 hash and base64url encode for code_challenge
-  const encoder = new TextEncoder();
-  const data = encoder.encode(code_verifier);
-  const digest = await window.crypto.subtle.digest('SHA-256', data);
-  const code_challenge = btoa(String.fromCharCode(...new Uint8Array(digest)))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-
-  return { code_verifier, code_challenge };
-}
-
-document.getElementById('twitch-login-btn').addEventListener('click', async function() {
-  const clientId = 'of7hb08b4r8e891rfh678346ctns5l';
-  const redirectUri = 'https://www.multistreamgrid.com/auth/twitch/callback';
-  const scopes = [
-    'chat:read',
-    'chat:edit',
-    'user:read:subscriptions'
-  ].join(' ');
-  const { code_verifier, code_challenge } = await generatePKCE();
-  localStorage.setItem('twitch_pkce_verifier', code_verifier);
-  const authUrl = `https://id.twitch.tv/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${encodeURIComponent(scopes)}&code_challenge=${code_challenge}&code_challenge_method=S256`;
-  window.location = authUrl;
-});
-
-
-// Logout function
-function logout() {
-  localStorage.removeItem('twitch_access_token');
-  location.reload();
-}
-  </script>
-  <div id="sidebar-preview"></div>
+        function loadState() {
+            const savedStreams = JSON.parse(localStorage.getItem('msGrid_streams') || '[]');
+            isGridMode = (localStorage.getItem('msGrid_mode') === 'true');
+            // Rebuild the UI without triggering individual layout updates
+            savedStreams.forEach(s => createStreamUI(s.name, s.platform, false));
+            // Run a single layout update at the end
+            setTimeout(updateLayout, 50);
+        }
+
+        function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('collapsed'); setTimeout(updateLayout, 300); }
+        function toggleLayoutMode() { isGridMode = !isGridMode; saveState(); updateLayout(); }
+        function clearAll() { document.getElementById('watching-list').innerHTML = ''; document.getElementById('stream-container').innerHTML = ''; saveState(); }
+
+        input.addEventListener('input', () => {
+            const val = input.value.trim();
+            suggestBox.innerHTML = ''; selectedIndex = -1;
+            if (!val) { suggestBox.style.display = 'none'; return; }
+            ['twitch', 'kick', 'youtube'].forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'suggestion-item';
+                div.innerHTML = `<span>Add <strong>${val}</strong></span><span class="label-${p}">${p.toUpperCase()}</span>`;
+                div.onclick = () => { createStreamUI(val, p); input.value = ''; suggestBox.style.display = 'none'; };
+                suggestBox.appendChild(div);
+            });
+            suggestBox.style.display = 'block';
+        });
+
+        input.addEventListener('keydown', (e) => {
+            const items = suggestBox.querySelectorAll('.suggestion-item');
+            if (e.key === 'ArrowDown') { selectedIndex = (selectedIndex + 1) % items.length; updateHighlight(items); e.preventDefault(); }
+            else if (e.key === 'ArrowUp') { selectedIndex = (selectedIndex - 1 + items.length) % items.length; updateHighlight(items); e.preventDefault(); }
+            else if (e.key === 'Enter') { if (selectedIndex > -1) items[selectedIndex].click(); }
+        });
+
+        function updateHighlight(items) { items.forEach((item, index) => item.classList.toggle('highlighted', index === selectedIndex)); }
+
+        function createStreamUI(name, platform, shouldSave = true) {
+            const id = `${platform}-${name.toLowerCase()}`;
+            if (document.getElementById('grid-' + id)) return;
+            const li = document.createElement('li');
+            li.className = `watching-item ${platform}`;
+            li.id = 'list-' + id;
+            let logoSVG = '';
+            if (platform === 'twitch') logoSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#9146ff" style="margin-right:12px;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>`;
+            else if (platform === 'kick') logoSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#53fc18" style="margin-right:12px;"><path d="M3 0h6v6h3V3h3V0h6v9h-3v3h3v9h-6v-3h-3v3h-3v3H3V0z"/></svg>`;
+            else if (platform === 'youtube') logoSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#ff0000" style="margin-right:12px;"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
+            li.innerHTML = `${logoSVG}<span style="flex-grow:1; font-size:0.9rem;">${name}</span><span onclick="removeStream('${id}')" style="cursor:pointer; opacity:0.5;">✕</span>`;
+            document.getElementById('watching-list').appendChild(li);
+            const box = document.createElement('div');
+            box.className = `stream-box ${platform}`; box.id = 'grid-' + id;
+            document.getElementById('stream-container').appendChild(box);
+            if (shouldSave) saveState();
+            updateLayout();
+        }
+
+        function removeStream(id) { document.getElementById('list-' + id).remove(); document.getElementById('grid-' + id).remove(); saveState(); updateLayout(); }
+
+        function updateLayout() {
+            const boxes = document.querySelectorAll('.stream-box');
+            boxes.forEach((box, index) => {
+                const isFirst = index === 0;
+                // CRITICAL FIX: Ensure focused-stream class logic is solid
+                box.classList.toggle('focused-stream', !isGridMode && isFirst);
+                
+                const [platform, name] = box.id.replace('grid-', '').split('-');
+                box.classList.remove('twitch', 'kick', 'youtube');
+                box.classList.add(platform);
+
+                let src = '';
+                if (platform === 'twitch') src = `https://player.twitch.tv/?channel=${name}&parent=${window.location.hostname}&autoplay=true&muted=${!isFirst}`;
+                else if (platform === 'kick') src = `https://player.kick.com/${name}?autoplay=true&muted=${!isFirst}`;
+                else if (platform === 'youtube') src = `https://www.youtube.com/embed/${name}?autoplay=1&mute=${isFirst ? '0' : '1'}`;
+                const currentIframe = box.querySelector('iframe');
+                if (!currentIframe || currentIframe.src !== src) { box.innerHTML = `<iframe src="${src}" allowfullscreen="true"></iframe>`; }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('year').textContent = new Date().getFullYear();
+            loadState();
+            Sortable.create(document.getElementById('watching-list'), { 
+                animation: 150, 
+                onEnd: () => { 
+                    saveState(); 
+                    updateLayout(); 
+                } 
+            });
+        });
+    </script>
 </body>
 </html>
