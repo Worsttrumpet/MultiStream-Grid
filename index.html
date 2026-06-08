@@ -3,303 +3,979 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MultiStream Grid</title>
+ 
+    <!-- SEO -->
+    <title>MultiStream Grid — Watch Multiple Streams At Once</title>
+    <meta name="description" content="Watch multiple Twitch and Kick streams side by side in a customizable grid. Add streams, drag to reorder, resize panels, and share your layout with one link.">
+    <meta name="keywords" content="multistream, watch multiple streams, twitch multistream, kick multistream, stream grid, multi stream viewer">
+    <meta name="author" content="MultiStream Grid">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.multistreamgrid.com/">
+ 
+    <!-- Open Graph (Discord, Twitter, etc.) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.multistreamgrid.com/">
+    <meta property="og:title" content="MultiStream Grid — Watch Multiple Streams At Once">
+    <meta property="og:description" content="Watch Twitch and Kick streams side by side. Custom layouts, drag to reorder, and shareable links.">
+    <meta property="og:image" content="https://www.multistreamgrid.com/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="MultiStream Grid">
+    <meta name="twitter:description" content="Watch multiple Twitch and Kick streams side by side.">
+ 
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146ff'><path d='M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z'/></svg>">
+ 
+    <!-- SortableJS for drag reorder -->
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <!-- interact.js for drag-resize -->
+    <script src="https://cdn.jsdelivr.net/npm/interactjs@1.10.27/dist/interact.min.js"></script>
+ 
     <style>
         :root {
             --sidebar-width: 280px;
             --twitch-purple: #9146ff;
             --kick-green: #53fc18;
-            --yt-red: #ff0000;
             --bg-dark: #0e0e10;
             --panel-bg: #18181b;
         }
-
+ 
+        * { box-sizing: border-box; }
+ 
         body {
             margin: 0; padding: 0;
             font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
+            background: var(--bg-dark);
             color: white;
             display: flex;
             height: 100vh; width: 100vw;
             overflow: hidden;
         }
-
-        /* --- Sidebar --- */
-        .sidebar { 
-            width: var(--sidebar-width); 
-            background: var(--panel-bg); 
-            display: flex; 
-            flex-direction: column; 
-            border-right: 1px solid #2d2d30; 
-            z-index: 100; 
+ 
+        /* ===================== LANDING PAGE ===================== */
+        #landing {
+            position: fixed; inset: 0;
+            background: var(--bg-dark);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            overflow-y: auto;
+        }
+ 
+        #landing.hidden { display: none; }
+ 
+        .landing-bg {
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse at 20% 50%, rgba(145,70,255,0.12) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 20%, rgba(83,252,24,0.06) 0%, transparent 50%);
+            pointer-events: none;
+        }
+ 
+        .landing-content {
+            position: relative;
+            max-width: 860px;
+            width: 100%;
+            text-align: center;
+        }
+ 
+        .landing-logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+ 
+        .landing-grid-icon {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            width: 48px; height: 48px;
+        }
+ 
+        .landing-grid-icon div {
+            background: var(--twitch-purple);
+            border-radius: 3px;
+            box-shadow: 0 0 16px rgba(145,70,255,0.7);
+        }
+ 
+        .landing-wordmark {
+            font-size: 2.2rem;
+            font-weight: 900;
+            letter-spacing: -1px;
+            line-height: 1;
+        }
+ 
+        .landing-wordmark span { color: var(--twitch-purple); }
+ 
+        .landing-sub {
+            font-size: 0.65rem;
+            font-weight: 800;
+            letter-spacing: 8px;
+            color: #555;
+            text-transform: uppercase;
+            margin-top: 4px;
+        }
+ 
+        .landing-hero h1 {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 900;
+            line-height: 1.1;
+            margin: 0 0 20px;
+            letter-spacing: -1px;
+        }
+ 
+        .landing-hero h1 em {
+            font-style: normal;
+            color: var(--twitch-purple);
+        }
+ 
+        .landing-hero p {
+            font-size: 1.1rem;
+            color: #aaa;
+            max-width: 520px;
+            margin: 0 auto 40px;
+            line-height: 1.6;
+        }
+ 
+        .launch-btn {
+            display: inline-block;
+            padding: 18px 48px;
+            background: var(--twitch-purple);
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 800;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            box-shadow: 0 0 40px rgba(145,70,255,0.5);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            text-decoration: none;
+        }
+ 
+        .launch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 60px rgba(145,70,255,0.7);
+        }
+ 
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 64px;
+        }
+ 
+        .feature-card {
+            background: #18181b;
+            border: 1px solid #2d2d30;
+            border-radius: 12px;
+            padding: 28px 24px;
+            text-align: left;
+            transition: border-color 0.2s;
+        }
+ 
+        .feature-card:hover { border-color: #444; }
+ 
+        .feature-icon {
+            font-size: 1.8rem;
+            margin-bottom: 14px;
+        }
+ 
+        .feature-card h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin: 0 0 8px;
+        }
+ 
+        .feature-card p {
+            font-size: 0.85rem;
+            color: #888;
+            margin: 0;
+            line-height: 1.5;
+        }
+ 
+        .platform-badges {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 48px;
+            flex-wrap: wrap;
+        }
+ 
+        .badge {
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+ 
+        .badge.twitch { background: rgba(145,70,255,0.15); border: 1px solid rgba(145,70,255,0.4); color: var(--twitch-purple); }
+        .badge.kick { background: rgba(83,252,24,0.1); border: 1px solid rgba(83,252,24,0.3); color: var(--kick-green); }
+ 
+        /* ===================== APP SHELL ===================== */
+        #app { display: flex; width: 100%; height: 100%; }
+        #app.hidden { display: none; }
+ 
+        /* ===================== SIDEBAR ===================== */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #2d2d30;
+            z-index: 100;
             position: relative;
             transition: width 0.3s ease;
+            flex-shrink: 0;
         }
-        
+ 
         .sidebar.collapsed { width: 0; }
         .sidebar.collapsed > *:not(#sidebar-toggle) { display: none; }
-
+ 
         #sidebar-toggle {
-            position: absolute; right: -12px; top: 50%; transform: translateY(-50%);
-            width: 24px; height: 50px; background: var(--panel-bg);
-            border: 1px solid #2d2d30; border-radius: 6px;
+            position: absolute; right: -13px; top: 50%;
+            transform: translateY(-50%);
+            width: 26px; height: 52px;
+            background: var(--panel-bg);
+            border: 1px solid #2d2d30;
+            border-radius: 6px;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer; z-index: 1000; color: #888;
+            font-size: 1rem;
+            user-select: none;
         }
-
-        .logo-header { padding: 30px 20px 15px 20px; display: flex; align-items: center; gap: 15px; }
-        .grid-icon-logo { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 32px; height: 32px; flex-shrink: 0; }
-        .grid-box { background: var(--twitch-purple); border-radius: 2px; box-shadow: 0 0 12px rgba(145, 70, 255, 0.6); }
-        .logo-text-stack { display: flex; flex-direction: column; align-items: center; }
-        .logo-main-text { font-size: 1.3rem; font-weight: 900; line-height: 0.9; color: #fff; letter-spacing: -0.5px; }
+ 
+        .logo-header { padding: 28px 20px 14px; display: flex; align-items: center; gap: 14px; }
+ 
+        .grid-icon-logo { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; width: 30px; height: 30px; flex-shrink: 0; }
+        .grid-box { background: var(--twitch-purple); border-radius: 2px; box-shadow: 0 0 10px rgba(145,70,255,0.5); }
+ 
+        .logo-text-stack { display: flex; flex-direction: column; align-items: flex-start; }
+        .logo-main-text { font-size: 1.2rem; font-weight: 900; line-height: 0.9; color: #fff; letter-spacing: -0.5px; }
         .logo-main-text span { color: var(--twitch-purple); }
-        .logo-sub-text { font-size: 0.7rem; font-weight: 800; letter-spacing: 6px; color: #888; margin-top: 4px; text-indent: 6px; }
-
-        .search-container { position: relative; padding: 15px; border-bottom: 1px solid #2d2d30; z-index: 1001; }
-        input { 
-            width: 100%; padding: 12px; border-radius: 6px; border: 1px solid #333; 
-            background: #26262c; color: white; outline: none; box-sizing: border-box;
-            transition: all 0.3s ease;
+        .logo-sub-text { font-size: 0.6rem; font-weight: 800; letter-spacing: 5px; color: #555; margin-top: 4px; }
+ 
+        .search-container { position: relative; padding: 14px; border-bottom: 1px solid #2d2d30; z-index: 1001; }
+ 
+        input[type="text"] {
+            width: 100%; padding: 11px 12px;
+            border-radius: 6px; border: 1px solid #333;
+            background: #26262c; color: white;
+            outline: none; font-size: 0.9rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        input:focus { border-color: var(--twitch-purple); box-shadow: 0 0 15px rgba(145, 70, 255, 0.4); }
-
-        #suggestions-box { 
-            position: absolute; top: 62px; left: 15px; right: 15px; 
-            background: #1f1f23; border: 1px solid #333; 
-            display: none; z-index: 1000; border-radius: 8px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.8); overflow: hidden;
+ 
+        input[type="text"]:focus {
+            border-color: var(--twitch-purple);
+            box-shadow: 0 0 12px rgba(145,70,255,0.3);
         }
-        .suggestion-item { padding: 12px; cursor: pointer; font-size: 0.85rem; border-bottom: 1px solid #2d2d30; display: flex; justify-content: space-between; align-items: center; color: #efeff1; }
-        .suggestion-item.highlighted { background: #3a3a3d; border-left: 4px solid var(--twitch-purple); }
-        .label-twitch { color: var(--twitch-purple); font-weight: 800; }
-        .label-kick { color: var(--kick-green); font-weight: 800; }
-        .label-youtube { color: var(--yt-red); font-weight: 800; }
-
-        .sidebar-scroll-area { flex-grow: 1; overflow-y: auto; padding: 15px; }
-        .watching-item { 
-            background: #26262c; padding: 12px; border-radius: 8px; margin-bottom: 8px; 
-            display: flex; align-items: center; border: 1px solid transparent; 
-            transition: all 0.2s; cursor: grab; 
+ 
+        #suggestions-box {
+            position: absolute; top: 60px; left: 14px; right: 14px;
+            background: #1f1f23; border: 1px solid #333;
+            display: none; z-index: 1002; border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.8);
+            overflow: hidden;
         }
-        .watching-item.twitch { border-left: 4px solid var(--twitch-purple); box-shadow: inset 4px 0 10px rgba(145, 70, 255, 0.2); }
-        .watching-item.kick { border-left: 4px solid var(--kick-green); box-shadow: inset 4px 0 10px rgba(83, 252, 24, 0.2); }
-        .watching-item.youtube { border-left: 4px solid var(--yt-red); box-shadow: inset 4px 0 10px rgba(255, 0, 0, 0.2); }
-
+ 
+        .suggestion-item {
+            padding: 11px 14px; cursor: pointer; font-size: 0.85rem;
+            border-bottom: 1px solid #2d2d30;
+            display: flex; justify-content: space-between; align-items: center;
+            color: #efeff1; transition: background 0.1s;
+        }
+ 
+        .suggestion-item:last-child { border-bottom: none; }
+        .suggestion-item.highlighted, .suggestion-item:hover { background: #3a3a3d; }
+        .suggestion-item.highlighted { border-left: 3px solid var(--twitch-purple); }
+ 
+        .label-twitch { color: var(--twitch-purple); font-weight: 800; font-size: 0.75rem; }
+        .label-kick { color: var(--kick-green); font-weight: 800; font-size: 0.75rem; }
+ 
+        .sidebar-scroll-area { flex-grow: 1; overflow-y: auto; padding: 14px; }
+        .sidebar-scroll-area::-webkit-scrollbar { width: 4px; }
+        .sidebar-scroll-area::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+ 
+        .watching-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            color: #555;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            padding-left: 2px;
+        }
+ 
+        .watching-item {
+            background: #26262c; padding: 10px 12px; border-radius: 8px;
+            margin-bottom: 7px; display: flex; align-items: center;
+            border: 1px solid #2d2d30;
+            border-left: 4px solid transparent;
+            transition: background 0.15s; cursor: grab;
+            user-select: none;
+        }
+ 
+        .watching-item:active { cursor: grabbing; }
+        .watching-item.twitch { border-left-color: var(--twitch-purple); }
+        .watching-item.kick { border-left-color: var(--kick-green); }
+        .watching-item:hover { background: #2e2e34; }
+ 
+        .watching-item .remove-btn {
+            cursor: pointer; opacity: 0.4; font-size: 0.75rem;
+            padding: 2px 4px; border-radius: 3px;
+            transition: opacity 0.15s, background 0.15s;
+            flex-shrink: 0;
+        }
+ 
+        .watching-item .remove-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); }
+ 
         main { flex-grow: 1; display: flex; overflow: hidden; background: #000; }
-        #stream-container { 
-            flex-grow: 1; display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); 
-            grid-auto-rows: min-content;
-            gap: 20px; padding: 20px; overflow-y: auto; align-content: start; 
+ 
+        #stream-container {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 6px;
+            padding: 6px;
+            overflow-y: auto;
+            align-content: start;
         }
-
-        .stream-box { 
-            position: relative; width: 100%; aspect-ratio: 16 / 9; 
-            background: #111; border-radius: 12px; overflow: hidden;
+ 
+        .stream-box {
+            position: relative;
+            background: #111;
+            border-radius: 8px;
+            overflow: hidden;
             border: 2px solid transparent;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            aspect-ratio: 16 / 9;
+            /* interact.js needs these */
+            touch-action: none;
         }
-        
-        .stream-box.twitch { border-color: rgba(145, 70, 255, 0.4); box-shadow: 0 0 20px rgba(145, 70, 255, 0.3); }
-        .stream-box.kick { border-color: rgba(83, 252, 24, 0.4); box-shadow: 0 0 20px rgba(83, 252, 24, 0.3); }
-        .stream-box.youtube { border-color: rgba(255, 0, 0, 0.4); box-shadow: 0 0 20px rgba(255, 0, 0, 0.3); }
-
-        .stream-box.focused-stream { grid-column: 1 / -1; max-height: 85vh; width: 100%; margin: 0 auto; box-shadow: 0 0 40px rgba(145, 70, 255, 0.5); border-color: var(--twitch-purple); }
-        iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; }
-
-        .sidebar-footer { padding: 15px; border-top: 1px solid #2d2d30; background: var(--panel-bg); }
-        .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
-        .footer-btn { padding: 10px; border-radius: 6px; border: 1px solid #333; background: #26262c; color: #ccc; cursor: pointer; font-size: 0.7rem; transition: background 0.2s; }
-        .footer-btn:hover { background: #3a3a3d; }
-        .copyright { opacity: 0.3; font-size: 0.65rem; text-align: center; margin: 0; }
+ 
+        .stream-box.twitch { border-color: rgba(145,70,255,0.35); }
+        .stream-box.kick { border-color: rgba(83,252,24,0.35); }
+ 
+        /* Resize handle */
+        .stream-box .resize-handle {
+            position: absolute;
+            bottom: 0; right: 0;
+            width: 20px; height: 20px;
+            cursor: nwse-resize;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+ 
+        .stream-box:hover .resize-handle { opacity: 1; }
+ 
+        .resize-handle::before {
+            content: '';
+            position: absolute;
+            bottom: 4px; right: 4px;
+            width: 10px; height: 10px;
+            border-right: 2px solid rgba(255,255,255,0.5);
+            border-bottom: 2px solid rgba(255,255,255,0.5);
+            border-radius: 1px;
+        }
+ 
+        .stream-box iframe {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            border: none;
+        }
+ 
+        /* Stream label overlay */
+        .stream-label {
+            position: absolute; top: 8px; left: 8px;
+            background: rgba(0,0,0,0.7);
+            padding: 3px 8px; border-radius: 4px;
+            font-size: 0.7rem; font-weight: 700;
+            color: white; z-index: 5;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+ 
+        .stream-box:hover .stream-label { opacity: 1; }
+ 
+        /* Drag ghost style */
+        .stream-box.sortable-ghost { opacity: 0.3; }
+        .stream-box.sortable-chosen { box-shadow: 0 0 0 3px var(--twitch-purple); }
+ 
+        /* ===================== FOOTER ===================== */
+        .sidebar-footer {
+            padding: 14px;
+            border-top: 1px solid #2d2d30;
+        }
+ 
+        .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+ 
+        .footer-btn {
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #2d2d30;
+            background: #26262c;
+            color: #ccc;
+            cursor: pointer;
+            font-size: 0.72rem;
+            font-weight: 600;
+            transition: background 0.15s, border-color 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+        }
+ 
+        .footer-btn:hover { background: #3a3a3d; border-color: #444; }
+ 
+        .copyright { opacity: 0.25; font-size: 0.6rem; text-align: center; margin: 0; }
+ 
+        /* ===================== TOAST ===================== */
+        .toast {
+            position: fixed; bottom: 24px; right: 24px;
+            background: #26262c;
+            border: 1px solid #3a3a3d;
+            color: white; padding: 12px 20px;
+            border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            z-index: 99999;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(0);
+        }
+ 
+        .toast.hide { opacity: 0; transform: translateY(8px); }
+ 
+        /* ===================== EMPTY STATE ===================== */
+        #empty-state {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            color: #444;
+            text-align: center;
+            gap: 12px;
+            padding: 40px;
+        }
+ 
+        #empty-state.visible { display: flex; }
+ 
+        #empty-state .empty-icon {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+            width: 60px; height: 60px; opacity: 0.15;
+        }
+ 
+        #empty-state .empty-icon div {
+            background: white; border-radius: 4px;
+        }
+ 
+        #empty-state p { font-size: 0.9rem; margin: 0; }
+        #empty-state span { font-size: 0.8rem; color: #333; }
     </style>
 </head>
 <body>
-    <aside class="sidebar">
-        <div id="sidebar-toggle" onclick="toggleSidebar()"><span>‹</span></div>
-        <div class="logo-header">
-            <div class="grid-icon-logo"><div class="grid-box"></div><div class="grid-box"></div><div class="grid-box"></div><div class="grid-box"></div></div>
-            <div class="logo-text-stack"><div class="logo-main-text">Multi<span>Stream</span></div><div class="logo-sub-text">GRID</div></div>
+ 
+<!-- ===================== LANDING PAGE ===================== -->
+<div id="landing">
+    <div class="landing-bg"></div>
+    <div class="landing-content">
+        <div class="landing-logo">
+            <div class="landing-grid-icon">
+                <div></div><div></div><div></div><div></div>
+            </div>
+            <div>
+                <div class="landing-wordmark">Multi<span>Stream</span></div>
+                <div class="landing-sub">GRID</div>
+            </div>
         </div>
+ 
+        <div class="landing-hero">
+            <h1>Watch <em>multiple streams</em><br>side by side.</h1>
+            <p>Add Twitch and Kick streams to a custom grid. Drag to reorder, resize panels to your liking, and share your layout with a single link.</p>
+            <button class="launch-btn" onclick="launchApp()">Launch App →</button>
+        </div>
+ 
+        <div class="platform-badges">
+            <span class="badge twitch">✓ Twitch</span>
+            <span class="badge kick">✓ Kick</span>
+        </div>
+ 
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">⚡</div>
+                <h3>Instant Setup</h3>
+                <p>Type a streamer name, pick the platform, and they're live in your grid immediately.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🖱️</div>
+                <h3>Drag & Resize</h3>
+                <p>Drag panels to reorder them and resize any stream to focus on what matters most.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔗</div>
+                <h3>Share Your Layout</h3>
+                <p>Generate a short link with your exact stream setup and send it to anyone instantly.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔒</div>
+                <h3>Private & Fast</h3>
+                <p>No account needed. Your layout is saved locally in your browser. Always free.</p>
+            </div>
+        </div>
+    </div>
+</div>
+ 
+<!-- ===================== APP ===================== -->
+<div id="app" class="hidden">
+    <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">MultiStream Grid — Watch Multiple Twitch and Kick Streams At Once</h1>
+ 
+    <aside class="sidebar">
+        <div id="sidebar-toggle" onclick="toggleSidebar()"><span id="toggle-arrow">‹</span></div>
+ 
+        <div class="logo-header">
+            <div class="grid-icon-logo">
+                <div class="grid-box"></div><div class="grid-box"></div>
+                <div class="grid-box"></div><div class="grid-box"></div>
+            </div>
+            <div class="logo-text-stack">
+                <div class="logo-main-text">Multi<span>Stream</span></div>
+                <div class="logo-sub-text">GRID</div>
+            </div>
+        </div>
+ 
         <div class="search-container">
-            <input type="text" id="streamer-input" placeholder="Search Streamer..." autocomplete="off">
+            <input type="text" id="streamer-input" placeholder="Add streamer…" autocomplete="off" spellcheck="false">
             <div id="suggestions-box"></div>
         </div>
-        <div class="sidebar-scroll-area"><ul id="watching-list" style="list-style:none; padding:0; margin:0;"></ul></div>
+ 
+        <div class="sidebar-scroll-area">
+            <div class="watching-label">Watching</div>
+            <ul id="watching-list" style="list-style:none;padding:0;margin:0;"></ul>
+        </div>
+ 
         <footer class="sidebar-footer">
             <div class="footer-grid">
-                <button class="footer-btn" onclick="toggleLayoutMode()">🖥️ Layout</button>
-                <button class="footer-btn" onclick="clearAll()">🗑️ Clear</button>
-                <button class="footer-btn" onclick="showToast('Settings Saved!')">⚙️ Settings</button>
+                <button class="footer-btn" onclick="clearAll()">🗑️ Clear All</button>
                 <button class="footer-btn" onclick="copyShareLink()">🔗 Share</button>
             </div>
-            <p class="copyright">© <span id="year"></span> MultiStream Grid.</p>
+            <p class="copyright">© <span id="year"></span> MultiStream Grid</p>
         </footer>
     </aside>
-    <main><div id="stream-container"></div></main>
-
-    <script>
-        let isGridMode = false;
-        let selectedIndex = -1;
-        const input = document.getElementById('streamer-input');
-        const suggestBox = document.getElementById('suggestions-box');
-
-        // Toast notification helper
-        function showToast(message) {
-            const toast = document.createElement('div');
-            toast.textContent = message;
-            toast.style.cssText = `
-                position: fixed; bottom: 20px; right: 20px;
-                background: var(--twitch-purple); color: white;
-                padding: 12px 24px; border-radius: 8px;
-                font-weight: bold; z-index: 9999;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-                transition: opacity 0.3s ease;
-            `;
-            document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 2500);
+ 
+    <main>
+        <div id="stream-container"></div>
+        <div id="empty-state">
+            <div class="empty-icon"><div></div><div></div><div></div><div></div></div>
+            <p>No streams yet</p>
+            <span>Search for a streamer in the sidebar to get started</span>
+        </div>
+    </main>
+</div>
+ 
+<script>
+// ===================== SECURITY HELPERS =====================
+ 
+const ALLOWED_PLATFORMS = ['twitch', 'kick'];
+ 
+// Validate and sanitize a streamer name: alphanumeric, underscores, hyphens only, max 30 chars
+function sanitizeName(name) {
+    if (typeof name !== 'string') return null;
+    const clean = name.trim().toLowerCase().replace(/[^a-z0-9_\-]/g, '');
+    if (clean.length === 0 || clean.length > 30) return null;
+    return clean;
+}
+ 
+function sanitizePlatform(platform) {
+    if (typeof platform !== 'string') return null;
+    const p = platform.toLowerCase().trim();
+    return ALLOWED_PLATFORMS.includes(p) ? p : null;
+}
+ 
+// Build iframe src — only two known safe patterns allowed
+function buildSrc(platform, name, muted) {
+    const n = sanitizeName(name);
+    const p = sanitizePlatform(platform);
+    if (!n || !p) return null;
+    const mutedVal = muted ? 'true' : 'false';
+    if (p === 'twitch') {
+        const host = encodeURIComponent(window.location.hostname || 'localhost');
+        return `https://player.twitch.tv/?channel=${encodeURIComponent(n)}&parent=${host}&autoplay=true&muted=${mutedVal}`;
+    }
+    if (p === 'kick') {
+        return `https://player.kick.com/${encodeURIComponent(n)}?autoplay=true&muted=${mutedVal}`;
+    }
+    return null;
+}
+ 
+// ===================== SHORT SHARE LINKS =====================
+// Instead of encoding everything in the URL (long base64), we store named
+// sessions in localStorage keyed by a short random ID.
+ 
+function generateShortId(len = 6) {
+    const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+    let id = '';
+    for (let i = 0; i < len; i++) {
+        id += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return id;
+}
+ 
+function getOrCreateSessionId() {
+    const params = new URLSearchParams(window.location.search);
+    const urlId = params.get('s');
+    if (urlId && /^[a-z2-9]{4,10}$/.test(urlId)) {
+        return urlId;
+    }
+    // Check existing session
+    let sid = sessionStorage.getItem('msGrid_sid');
+    if (!sid) {
+        sid = generateShortId();
+        sessionStorage.setItem('msGrid_sid', sid);
+    }
+    return sid;
+}
+ 
+let sessionId = null; // set on app init
+ 
+function saveState() {
+    const streams = getStreamList();
+    const data = JSON.stringify(streams);
+    localStorage.setItem(`msGrid_session_${sessionId}`, data);
+ 
+    // Update URL to short link
+    if (streams.length > 0) {
+        window.history.replaceState(null, '', `?s=${sessionId}`);
+    } else {
+        window.history.replaceState(null, '', window.location.pathname);
+    }
+}
+ 
+function loadState() {
+    const params = new URLSearchParams(window.location.search);
+    const urlId = params.get('s');
+ 
+    let streams = [];
+ 
+    if (urlId && /^[a-z2-9]{4,10}$/.test(urlId)) {
+        // Load from shared link
+        sessionId = urlId;
+        const raw = localStorage.getItem(`msGrid_session_${urlId}`);
+        if (raw) {
+            try { streams = JSON.parse(raw); } catch(e) {}
         }
-
-        // Updated: Ensures URL updates immediately for sharing
-        function saveState() {
-            const streams = Array.from(document.querySelectorAll('.watching-item')).map(li => {
-                const parts = li.id.replace('list-', '').split('-');
-                return { platform: parts[0], name: parts[1] };
-            });
-            localStorage.setItem('msGrid_streams', JSON.stringify(streams));
-            localStorage.setItem('msGrid_mode', isGridMode);
-
-            // Sync address bar URL using Base64 to keep it clean for many streamers
-            if (streams.length > 0) {
-                const rawString = streams.map(s => `${s.platform}:${s.name}`).join(',');
-                const encoded = btoa(rawString); 
-                window.history.replaceState(null, '', `?g=${encoded}`);
-            } else {
-                window.history.replaceState(null, '', window.location.pathname);
+    } else {
+        // New or returning user — get/create session
+        sessionId = getOrCreateSessionId();
+        const raw = localStorage.getItem(`msGrid_session_${sessionId}`);
+        if (raw) {
+            try { streams = JSON.parse(raw); } catch(e) {}
+        }
+    }
+ 
+    // Validate each stream entry before loading
+    streams.forEach(s => {
+        const name = sanitizeName(s.name);
+        const platform = sanitizePlatform(s.platform);
+        if (name && platform) createStreamUI(name, platform, false);
+    });
+ 
+    updateEmptyState();
+}
+ 
+function getStreamList() {
+    return Array.from(document.querySelectorAll('.watching-item')).map(li => {
+        const raw = li.dataset.id || '';
+        const dashIdx = raw.indexOf('-');
+        if (dashIdx === -1) return null;
+        return {
+            platform: raw.substring(0, dashIdx),
+            name: raw.substring(dashIdx + 1)
+        };
+    }).filter(Boolean);
+}
+ 
+// ===================== UI STATE =====================
+ 
+function updateEmptyState() {
+    const boxes = document.querySelectorAll('.stream-box');
+    const empty = document.getElementById('empty-state');
+    const container = document.getElementById('stream-container');
+    if (boxes.length === 0) {
+        empty.classList.add('visible');
+        container.style.display = 'none';
+    } else {
+        empty.classList.remove('visible');
+        container.style.display = '';
+    }
+}
+ 
+// ===================== STREAM CREATION =====================
+ 
+const iframeCache = {}; // id -> src — track what's already loaded to avoid reloads
+ 
+function createStreamUI(name, platform, shouldSave = true) {
+    const cleanName = sanitizeName(name);
+    const cleanPlatform = sanitizePlatform(platform);
+    if (!cleanName || !cleanPlatform) return;
+ 
+    const id = `${cleanPlatform}-${cleanName}`;
+    if (document.getElementById('grid-' + id)) return; // already exists
+ 
+    // --- Sidebar item ---
+    const li = document.createElement('li');
+    li.className = `watching-item ${cleanPlatform}`;
+    li.id = 'list-' + id;
+    li.dataset.id = id;
+ 
+    const logoSVG = cleanPlatform === 'twitch'
+        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="#9146ff" style="margin-right:10px;flex-shrink:0"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>`
+        : `<svg width="13" height="13" viewBox="0 0 24 24" fill="#53fc18" style="margin-right:10px;flex-shrink:0"><path d="M3 0h6v6h3V3h3V0h6v9h-3v3h3v9h-6v-3h-3v3h-3v3H3V0z"/></svg>`;
+ 
+    li.innerHTML = `${logoSVG}<span style="flex-grow:1;font-size:0.88rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(cleanName)}</span><span class="remove-btn" onclick="removeStream('${escapeHtml(id)}')">✕</span>`;
+    document.getElementById('watching-list').appendChild(li);
+ 
+    // --- Stream box ---
+    const box = document.createElement('div');
+    box.className = `stream-box ${cleanPlatform}`;
+    box.id = 'grid-' + id;
+    box.dataset.id = id;
+ 
+    // Only the first stream plays with audio; rest are muted
+    const streamCount = document.querySelectorAll('.stream-box').length;
+    const muted = streamCount > 0;
+    const src = buildSrc(cleanPlatform, cleanName, muted);
+    if (!src) return;
+ 
+    iframeCache[id] = src;
+ 
+    box.innerHTML = `
+        <iframe
+            src="${src}"
+            allow="autoplay; fullscreen; picture-in-picture"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-modals"
+            allowfullscreen
+        ></iframe>
+        <div class="stream-label">${escapeHtml(cleanName)}</div>
+        <div class="resize-handle"></div>
+    `;
+ 
+    document.getElementById('stream-container').appendChild(box);
+    attachResizable(box);
+ 
+    if (shouldSave) saveState();
+    updateEmptyState();
+}
+ 
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+ 
+function removeStream(id) {
+    const listEl = document.getElementById('list-' + id);
+    const gridEl = document.getElementById('grid-' + id);
+    if (listEl) listEl.remove();
+    if (gridEl) gridEl.remove();
+    delete iframeCache[id];
+    saveState();
+    updateEmptyState();
+}
+ 
+function clearAll() {
+    document.getElementById('watching-list').innerHTML = '';
+    document.getElementById('stream-container').innerHTML = '';
+    Object.keys(iframeCache).forEach(k => delete iframeCache[k]);
+    saveState();
+    updateEmptyState();
+}
+ 
+// ===================== RESIZE (interact.js) =====================
+ 
+function attachResizable(box) {
+    interact(box).resizable({
+        edges: { bottom: true, right: true, bottomRight: '.resize-handle' },
+        listeners: {
+            move(event) {
+                const target = event.target;
+                let w = parseFloat(target.style.width) || target.offsetWidth;
+                let h = parseFloat(target.style.height) || target.offsetHeight;
+                w += event.deltaRect.width;
+                h += event.deltaRect.height;
+                w = Math.max(280, w);
+                h = Math.max(158, h);
+                target.style.width = w + 'px';
+                target.style.height = h + 'px';
+                // When manually resized, remove the aspect-ratio constraint so height is freeform
+                target.style.aspectRatio = 'unset';
             }
-        }
-
-        // Action for the Share button
-        function copyShareLink() {
-            // Re-run saveState just in case to capture latest changes
+        },
+        modifiers: [
+            interact.modifiers.restrictSize({ min: { width: 280, height: 158 } })
+        ]
+    });
+}
+ 
+// ===================== SEARCH / SUGGESTIONS =====================
+ 
+let selectedIndex = -1;
+const input = document.getElementById('streamer-input');
+const suggestBox = document.getElementById('suggestions-box');
+ 
+input.addEventListener('input', () => {
+    const val = input.value.trim();
+    suggestBox.innerHTML = '';
+    selectedIndex = -1;
+ 
+    if (!val) { suggestBox.style.display = 'none'; return; }
+ 
+    // Only show suggestions for valid-looking names
+    const clean = val.replace(/[^a-z0-9_\-]/gi, '');
+    if (!clean) { suggestBox.style.display = 'none'; return; }
+ 
+    ALLOWED_PLATFORMS.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'suggestion-item';
+        div.innerHTML = `<span>Add <strong>${escapeHtml(clean)}</strong></span><span class="label-${p}">${p.toUpperCase()}</span>`;
+        div.onclick = () => {
+            createStreamUI(clean, p);
+            input.value = '';
+            suggestBox.style.display = 'none';
+        };
+        suggestBox.appendChild(div);
+    });
+ 
+    suggestBox.style.display = 'block';
+});
+ 
+input.addEventListener('keydown', (e) => {
+    const items = suggestBox.querySelectorAll('.suggestion-item');
+    if (!items.length) return;
+    if (e.key === 'ArrowDown') { selectedIndex = (selectedIndex + 1) % items.length; updateHighlight(items); e.preventDefault(); }
+    else if (e.key === 'ArrowUp') { selectedIndex = (selectedIndex - 1 + items.length) % items.length; updateHighlight(items); e.preventDefault(); }
+    else if (e.key === 'Enter' && selectedIndex > -1) { items[selectedIndex].click(); }
+    else if (e.key === 'Escape') { suggestBox.style.display = 'none'; selectedIndex = -1; }
+});
+ 
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-container')) suggestBox.style.display = 'none';
+});
+ 
+function updateHighlight(items) {
+    items.forEach((item, i) => item.classList.toggle('highlighted', i === selectedIndex));
+}
+ 
+// ===================== SIDEBAR =====================
+ 
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    const arrow = document.getElementById('toggle-arrow');
+    sidebar.classList.toggle('collapsed');
+    arrow.textContent = sidebar.classList.contains('collapsed') ? '›' : '‹';
+}
+ 
+// ===================== SHARE =====================
+ 
+function copyShareLink() {
+    saveState();
+    navigator.clipboard.writeText(window.location.href).then(() => {
+        showToast('🔗 Link copied!');
+    }).catch(() => {
+        showToast('❌ Copy failed');
+    });
+}
+ 
+// ===================== SORTABLE (reorder sidebar + grid in sync) =====================
+ 
+function initSortable() {
+    // Sidebar list reorder → sync stream grid
+    Sortable.create(document.getElementById('watching-list'), {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: () => {
+            syncGridOrder();
             saveState();
-            navigator.clipboard.writeText(window.location.href).then(() => {
-                showToast('🚀 Link Copied to Clipboard!');
-            }).catch(err => {
-                console.error('Failed to copy: ', err);
-                showToast('❌ Copy Failed');
-            });
         }
-
-        // Load streamers from shared URL or LocalStorage
-        function loadState() {
-            const params = new URLSearchParams(window.location.search);
-            const encodedData = params.get('g');
-            let streamsToLoad = [];
-
-            if (encodedData) {
-                try {
-                    const decoded = atob(encodedData);
-                    streamsToLoad = decoded.split(',').map(item => {
-                        const [platform, name] = item.split(':');
-                        return { platform, name };
-                    });
-                } catch (e) {
-                    console.error("Invalid share link.");
-                    streamsToLoad = JSON.parse(localStorage.getItem('msGrid_streams') || '[]');
-                }
-            } else {
-                streamsToLoad = JSON.parse(localStorage.getItem('msGrid_streams') || '[]');
-            }
-
-            isGridMode = (localStorage.getItem('msGrid_mode') === 'true');
-            streamsToLoad.forEach(s => createStreamUI(s.name, s.platform, false));
-            setTimeout(updateLayout, 50);
+    });
+ 
+    // Stream grid reorder directly
+    Sortable.create(document.getElementById('stream-container'), {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        handle: '.stream-label',
+        filter: '.resize-handle',
+        onEnd: () => {
+            syncSidebarOrder();
+            saveState();
         }
-
-        function toggleSidebar() { document.querySelector('.sidebar').classList.toggle('collapsed'); setTimeout(updateLayout, 300); }
-        function toggleLayoutMode() { isGridMode = !isGridMode; saveState(); updateLayout(); }
-        function clearAll() { document.getElementById('watching-list').innerHTML = ''; document.getElementById('stream-container').innerHTML = ''; saveState(); }
-
-        input.addEventListener('input', () => {
-            const val = input.value.trim();
-            suggestBox.innerHTML = ''; selectedIndex = -1;
-            if (!val) { suggestBox.style.display = 'none'; return; }
-            ['twitch', 'kick', 'youtube'].forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'suggestion-item';
-                div.innerHTML = `<span>Add <strong>${val}</strong></span><span class="label-${p}">${p.toUpperCase()}</span>`;
-                div.onclick = () => { createStreamUI(val, p); input.value = ''; suggestBox.style.display = 'none'; };
-                suggestBox.appendChild(div);
-            });
-            suggestBox.style.display = 'block';
-        });
-
-        input.addEventListener('keydown', (e) => {
-            const items = suggestBox.querySelectorAll('.suggestion-item');
-            if (e.key === 'ArrowDown') { selectedIndex = (selectedIndex + 1) % items.length; updateHighlight(items); e.preventDefault(); }
-            else if (e.key === 'ArrowUp') { selectedIndex = (selectedIndex - 1 + items.length) % items.length; updateHighlight(items); e.preventDefault(); }
-            else if (e.key === 'Enter') { if (selectedIndex > -1) items[selectedIndex].click(); }
-        });
-
-        function updateHighlight(items) { items.forEach((item, index) => item.classList.toggle('highlighted', index === selectedIndex)); }
-
-        function createStreamUI(name, platform, shouldSave = true) {
-            const id = `${platform}-${name.toLowerCase()}`;
-            if (document.getElementById('grid-' + id)) return;
-            const li = document.createElement('li');
-            li.className = `watching-item ${platform}`;
-            li.id = 'list-' + id;
-            let logoSVG = '';
-            if (platform === 'twitch') logoSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#9146ff" style="margin-right:12px;"><path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>`;
-            else if (platform === 'kick') logoSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#53fc18" style="margin-right:12px;"><path d="M3 0h6v6h3V3h3V0h6v9h-3v3h3v9h-6v-3h-3v3h-3v3H3V0z"/></svg>`;
-            else if (platform === 'youtube') logoSVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="#ff0000" style="margin-right:12px;"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>`;
-            li.innerHTML = `${logoSVG}<span style="flex-grow:1; font-size:0.9rem;">${name}</span><span onclick="removeStream('${id}')" style="cursor:pointer; opacity:0.5;">✕</span>`;
-            document.getElementById('watching-list').appendChild(li);
-            const box = document.createElement('div');
-            box.className = `stream-box ${platform}`; box.id = 'grid-' + id;
-            document.getElementById('stream-container').appendChild(box);
-            if (shouldSave) saveState();
-            updateLayout();
-        }
-
-        function removeStream(id) { document.getElementById('list-' + id).remove(); document.getElementById('grid-' + id).remove(); saveState(); updateLayout(); }
-
-        function updateLayout() {
-            const boxes = document.querySelectorAll('.stream-box');
-            boxes.forEach((box, index) => {
-                const isFirst = index === 0;
-                box.classList.toggle('focused-stream', !isGridMode && isFirst);
-                
-                const [platform, name] = box.id.replace('grid-', '').split('-');
-                box.classList.remove('twitch', 'kick', 'youtube');
-                box.classList.add(platform);
-
-                let src = '';
-                if (platform === 'twitch') src = `https://player.twitch.tv/?channel=${name}&parent=${window.location.hostname}&autoplay=true&muted=${!isFirst}`;
-                else if (platform === 'kick') src = `https://player.kick.com/${name}?autoplay=true&muted=${!isFirst}`;
-                else if (platform === 'youtube') src = `https://www.youtube.com/embed/${name}?autoplay=1&mute=${isFirst ? '0' : '1'}`;
-                const currentIframe = box.querySelector('iframe');
-                if (!currentIframe || currentIframe.src !== src) { box.innerHTML = `<iframe src="${src}" allowfullscreen="true"></iframe>`; }
-            });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('year').textContent = new Date().getFullYear();
-            loadState();
-            Sortable.create(document.getElementById('watching-list'), { 
-                animation: 150, 
-                onEnd: () => { 
-                    saveState(); 
-                    updateLayout(); 
-                } 
-            });
-        });
-    </script>
+    });
+}
+ 
+// After reordering sidebar, reorder grid to match
+function syncGridOrder() {
+    const container = document.getElementById('stream-container');
+    const listItems = Array.from(document.querySelectorAll('.watching-item'));
+    listItems.forEach(li => {
+        const id = li.dataset.id;
+        const box = document.getElementById('grid-' + id);
+        if (box) container.appendChild(box);
+    });
+}
+ 
+// After reordering grid, reorder sidebar list to match
+function syncSidebarOrder() {
+    const watchingList = document.getElementById('watching-list');
+    const boxes = Array.from(document.querySelectorAll('.stream-box'));
+    boxes.forEach(box => {
+        const id = box.dataset.id;
+        const li = document.getElementById('list-' + id);
+        if (li) watchingList.appendChild(li);
+    });
+}
+ 
+// ===================== TOAST =====================
+ 
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('hide');
+        setTimeout(() => toast.remove(), 300);
+    }, 2200);
+}
+ 
+// ===================== LANDING → APP =====================
+ 
+function launchApp() {
+    document.getElementById('landing').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    localStorage.setItem('msGrid_launched', '1');
+}
+ 
+// ===================== INIT =====================
+ 
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('year').textContent = new Date().getFullYear();
+ 
+    const params = new URLSearchParams(window.location.search);
+    const hasShareLink = params.has('s');
+    const hasLaunched = localStorage.getItem('msGrid_launched');
+ 
+    // Skip landing if returning user or opening a shared link
+    if (hasShareLink || hasLaunched) {
+        launchApp();
+    }
+ 
+    loadState();
+    initSortable();
+});
+</script>
 </body>
 </html>
+ 
