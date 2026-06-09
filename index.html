@@ -842,10 +842,24 @@ function loadChat() {
     if (dashIdx === -1) return;
     const platform = id.substring(0, dashIdx);
     const name = id.substring(dashIdx + 1);
-    const src = buildChatSrc(platform, name);
-    if (!src) return;
  
-    container.innerHTML = `<iframe src="${src}" sandbox="allow-scripts allow-same-origin allow-popups allow-modals allow-forms allow-storage-access-by-user-activation" allowfullscreen></iframe>`;
+    if (platform === 'twitch') {
+        const src = buildChatSrc(platform, name);
+        if (!src) return;
+        container.innerHTML = `<iframe src="${src}" sandbox="allow-scripts allow-same-origin allow-popups allow-modals allow-forms allow-storage-access-by-user-activation" allowfullscreen></iframe>`;
+    } else if (platform === 'kick') {
+        container.innerHTML = `
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:24px;text-align:center;">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="#53fc18"><path d="M3 0h6v6h3V3h3V0h6v9h-3v3h3v9h-6v-3h-3v3h-3v3H3V0z"/></svg>
+                <p style="color:#aaa;font-size:0.85rem;margin:0;line-height:1.6">Kick doesn't support<br>embedded chat on other sites.</p>
+                <a href="https://kick.com/${encodeURIComponent(name)}" target="_blank" rel="noopener noreferrer"
+                   style="display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:#53fc18;color:#000;font-weight:800;font-size:0.85rem;border-radius:8px;text-decoration:none;transition:opacity 0.15s;"
+                   onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+                    Open ${escapeHtml(name)}'s chat on Kick ↗
+                </a>
+            </div>
+        `;
+    }
 }
  
 // ===================== SEARCH =====================
