@@ -24,6 +24,14 @@
  
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%239146ff'><path d='M3 3h8v8H3V3zm10 0h8v8h-8V3zM3 13h8v8H3v-8zm10 0h8v8h-8v-8z'/></svg>">
  
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HFDC0CWD1M"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-HFDC0CWD1M');
+    </script>
+ 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
  
     <style>
@@ -267,6 +275,49 @@
             color: white;
         }
         .ctrl-btn:hover { background: rgba(0,0,0,0.97); border-color: rgba(255,255,255,0.5); transform: scale(1.08); }
+ 
+        /* Stream name badge - top left */
+        .stream-name-badge {
+            position: absolute; top: 10px; left: 10px;
+            display: flex; align-items: center; gap: 6px;
+            background: rgba(0,0,0,0.75);
+            padding: 4px 8px 4px 6px;
+            border-radius: 6px;
+            z-index: 10;
+            backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .stream-box:hover .stream-name-badge { opacity: 1; }
+        .focused .stream-name-badge { opacity: 1; }
+ 
+        .live-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 0 6px currentColor;
+            animation: pulse 2s infinite;
+        }
+ 
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+ 
+        .badge-name {
+            font-size: 0.78rem;
+            font-weight: 700;
+            color: white;
+            letter-spacing: 0.2px;
+        }
+ 
+        .badge-platform {
+            font-size: 0.6rem;
+            font-weight: 800;
+            padding: 2px 5px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+        }
  
         /* Drag handle label */
         .stream-drag-handle {
@@ -630,11 +681,16 @@ function createStreamUI(name, platform, shouldSave = true) {
     box.dataset.name = cleanName;
     box.dataset.platform = cleanPlatform;
  
-    // First stream gets audio, rest are muted
+    // First stream gets audio (twitch only), Kick always muted
     const existingCount = document.querySelectorAll('.stream-box').length;
-    const muted = existingCount > 0;
+    const isFirst = existingCount === 0;
+    const muted = cleanPlatform === 'kick' ? true : !isFirst;
     const src = buildSrc(cleanPlatform, cleanName, muted);
     if (!src) return;
+ 
+    const badgeColor = cleanPlatform === 'twitch' ? '#9146ff' : '#53fc18';
+    const badgeTextColor = cleanPlatform === 'twitch' ? 'white' : '#000';
+    const liveDot = cleanPlatform === 'twitch' ? '#ff4444' : '#53fc18';
  
     box.innerHTML = `
         <iframe
@@ -643,6 +699,11 @@ function createStreamUI(name, platform, shouldSave = true) {
             sandbox="allow-scripts allow-same-origin allow-popups allow-presentation allow-modals"
             allowfullscreen
         ></iframe>
+        <div class="stream-name-badge">
+            <span class="live-dot" style="background:${liveDot}"></span>
+            <span class="badge-name">${escapeHtml(cleanName)}</span>
+            <span class="badge-platform" style="background:${badgeColor};color:${badgeTextColor}">${cleanPlatform === 'twitch' ? 'TWITCH' : 'KICK'}</span>
+        </div>
         <div class="stream-controls">
             <div class="ctrl-btn" title="Focus stream" onclick="toggleFocus('${escapeHtml(id)}')">🔍</div>
         </div>
@@ -651,7 +712,10 @@ function createStreamUI(name, platform, shouldSave = true) {
  
     document.getElementById('stream-container').appendChild(box);
  
-    if (shouldSave) saveState();
+    if (shouldSave) {
+        saveState();
+        gtag('event', 'stream_added', { platform: cleanPlatform, stream_name: cleanName });
+    }
     updateEmptyState();
 }
  
@@ -701,7 +765,7 @@ function focusStream(id) {
     if (!box) return;
     focusedId = id;
     box.classList.add('focused');
-    // Change icon to unfocus
+    gtag('event', 'stream_focused');
     const btn = box.querySelector('.ctrl-btn');
     if (btn) { btn.textContent = '✕'; btn.title = 'Unfocus'; }
 }
@@ -730,17 +794,13 @@ function toggleChat() {
     panel.classList.toggle('open');
     btn.classList.toggle('active', panel.classList.contains('open'));
     if (panel.classList.contains('open')) {
-        // Auto-select first stream if nothing selected
+        gtag('event', 'chat_opened');
         const sel = document.getElementById('chat-select');
         if (!sel.value) {
             const first = document.querySelector('.stream-box');
-            if (first) {
-                sel.value = first.dataset.id;
-                loadChat();
-            }
+            if (first) { sel.value = first.dataset.id; loadChat(); }
         }
     }
-    // Recalculate grid after panel opens/closes
     setTimeout(updateGridClass, 50);
 }
  
@@ -843,6 +903,7 @@ function toggleSidebar() {
 function copyShareLink() {
     saveState();
     navigator.clipboard.writeText(window.location.href).then(() => {
+        gtag('event', 'share_link_copied');
         showToast('🔗 Link copied!');
     }).catch(() => { showToast('❌ Copy failed'); });
 }
