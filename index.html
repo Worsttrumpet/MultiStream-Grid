@@ -536,7 +536,7 @@ function buildSrc(platform, name, muted) {
         return `https://player.twitch.tv/?channel=${encodeURIComponent(n)}&parent=${host}&autoplay=true&muted=${muted ? 'true' : 'false'}`;
     }
     if (p === 'kick') {
-        return `https://player.kick.com/${encodeURIComponent(n)}?autoplay=1&muted=1`;
+        return `https://player.kick.com/${encodeURIComponent(n)}?autoplay=true&muted=true`;
     }
     return null;
 }
@@ -641,8 +641,8 @@ function enforceKickMute() {
         } catch(e) {}
         // Also reload the src if it somehow lost muted param
         try {
-            if (iframe.src && !iframe.src.includes('muted=1')) {
-                iframe.src = iframe.src + (iframe.src.includes('?') ? '&muted=1' : '?muted=1');
+            if (iframe.src && !iframe.src.includes('muted=true')) {
+                iframe.src = iframe.src + (iframe.src.includes('?') ? '&muted=true' : '?muted=true');
             }
         } catch(e) {}
     });
