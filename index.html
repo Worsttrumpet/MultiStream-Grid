@@ -620,15 +620,32 @@ function getStreamList() {
 function updateGridClass() {
     const container = document.getElementById('stream-container');
     const count = container.querySelectorAll('.stream-box').length;
-    // Remove all count classes
     container.className = container.className.replace(/count-\S+/g, '').trim();
     if (count === 0) container.classList.add('count-0');
     else if (count <= 8) container.classList.add(`count-${count}`);
     else container.classList.add('count-many');
  
-    // Make container fill main area properly
     const main = document.querySelector('main');
     container.style.height = main ? main.offsetHeight + 'px' : '100%';
+ 
+    // Re-enforce mute on all Kick iframes after layout shifts
+    enforceKickMute();
+}
+ 
+// Kick's player can reset its audio state on layout reflow.
+// We re-send the mute command to every Kick iframe after any change.
+function enforceKickMute() {
+    document.querySelectorAll('.stream-box.kick iframe').forEach(iframe => {
+        try {
+            iframe.contentWindow.postMessage({ event: 'mute' }, '*');
+        } catch(e) {}
+        // Also reload the src if it somehow lost muted param
+        try {
+            if (iframe.src && !iframe.src.includes('muted=1')) {
+                iframe.src = iframe.src + (iframe.src.includes('?') ? '&muted=1' : '?muted=1');
+            }
+        } catch(e) {}
+    });
 }
  
 window.addEventListener('resize', updateGridClass);
@@ -717,6 +734,9 @@ function createStreamUI(name, platform, shouldSave = true) {
         gtag('event', 'stream_added', { platform: cleanPlatform, stream_name: cleanName });
     }
     updateEmptyState();
+    // Give Kick iframes a moment to load then enforce mute
+    setTimeout(enforceKickMute, 1500);
+    setTimeout(enforceKickMute, 4000);
 }
  
 function removeStream(id) {
